@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
 import { PageLayout } from '@/components/layout/page-layout'
 
+export const revalidate = 3600 // Revalidar a cada 1 hora
+
 export default async function TournamentsPage() {
   const supabase = await createClient()
 

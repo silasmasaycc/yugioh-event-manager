@@ -14,6 +14,14 @@ import { Trophy, LogOut, Plus, Edit, Trash2, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth, useUserRole } from '@/lib/hooks/use-auth'
 import { toast } from 'sonner'
+import { 
+  createPlayer, 
+  updatePlayer, 
+  deletePlayer, 
+  createTournament, 
+  updateTournament, 
+  deleteTournament 
+} from '@/app/admin/actions'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -123,20 +131,27 @@ export default function AdminDashboard() {
           return
         }
 
-        const { error } = await supabase
-          .from('players')
-          .update({ name: playerName, image_url: imageUrl || null })
-          .eq('id', editingPlayer.id)
+        const result = await updatePlayer(editingPlayer.id, {
+          name: playerName,
+          image_url: imageUrl || undefined
+        })
 
-        if (error) throw error
+        if (!result.success) {
+          throw new Error(result.error)
+        }
+
         toast.success('Jogador atualizado com sucesso!')
       } else {
         // Create
-        const { error } = await supabase
-          .from('players')
-          .insert({ name: playerName, image_url: imageUrl || null })
+        const result = await createPlayer({
+          name: playerName,
+          image_url: imageUrl || undefined
+        })
 
-        if (error) throw error
+        if (!result.success) {
+          throw new Error(result.error)
+        }
+
         toast.success('Jogador criado com sucesso!')
       }
 
@@ -156,8 +171,12 @@ export default function AdminDashboard() {
     if (!confirm('Tem certeza que deseja excluir este jogador?')) return
 
     try {
-      const { error } = await supabase.from('players').delete().eq('id', id)
-      if (error) throw error
+      const result = await deletePlayer(id)
+      
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
       toast.success('Jogador excluído com sucesso!')
       loadData()
     } catch (error: any) {
@@ -169,10 +188,25 @@ export default function AdminDashboard() {
     e.preventDefault()
 
     try {
+      // Preparar resultados
+      const results = []
+      if (firstPlace) results.push({ player_id: parseInt(firstPlace), placement: 1 })
+      if (secondPlace) results.push({ player_id: parseInt(secondPlace), placement: 2 })
+      if (thirdPlace) results.push({ player_id: parseInt(thirdPlace), placement: 3 })
+      if (fourthPlace) results.push({ player_id: parseInt(fourthPlace), placement: 4 })
+      
+      // Add other participants without placement (didn't finish in TOP 4)
+      otherParticipants.forEach(playerId => {
+        if (playerId && playerId !== firstPlace && playerId !== secondPlace && playerId !== thirdPlace && playerId !== fourthPlace) {
+          results.push({ player_id: parseInt(playerId), placement: null })
+        }
+      })
+
       const tournamentData = {
         name: tournamentName,
         date: tournamentDate,
-        player_count: parseInt(tournamentPlayerCount)
+        player_count: parseInt(tournamentPlayerCount),
+        results
       }
 
       if (editingTournament) {
@@ -182,62 +216,19 @@ export default function AdminDashboard() {
           return
         }
 
-        const { error } = await supabase
-          .from('tournaments')
-          .update(tournamentData)
-          .eq('id', editingTournament.id)
+        const result = await updateTournament(editingTournament.id, tournamentData)
 
-        if (error) throw error
-
-        // Delete existing results and insert new ones
-        await supabase.from('tournament_results').delete().eq('tournament_id', editingTournament.id)
-
-        const results = []
-        if (firstPlace) results.push({ tournament_id: editingTournament.id, player_id: parseInt(firstPlace), placement: 1 })
-        if (secondPlace) results.push({ tournament_id: editingTournament.id, player_id: parseInt(secondPlace), placement: 2 })
-        if (thirdPlace) results.push({ tournament_id: editingTournament.id, player_id: parseInt(thirdPlace), placement: 3 })
-        if (fourthPlace) results.push({ tournament_id: editingTournament.id, player_id: parseInt(fourthPlace), placement: 4 })
-        
-        // Add other participants without placement (didn't finish in TOP 4)
-        otherParticipants.forEach(playerId => {
-          if (playerId && playerId !== firstPlace && playerId !== secondPlace && playerId !== thirdPlace && playerId !== fourthPlace) {
-            results.push({ tournament_id: editingTournament.id, player_id: parseInt(playerId), placement: null })
-          }
-        })
-
-        if (results.length > 0) {
-          const { error: resultsError } = await supabase.from('tournament_results').insert(results)
-          if (resultsError) throw resultsError
+        if (!result.success) {
+          throw new Error(result.error)
         }
 
         toast.success('Torneio atualizado com sucesso!')
       } else {
         // Create
-        const { data: newTournament, error } = await supabase
-          .from('tournaments')
-          .insert(tournamentData)
-          .select()
-          .single()
+        const result = await createTournament(tournamentData)
 
-        if (error) throw error
-
-        // Insert results
-        const results = []
-        if (firstPlace) results.push({ tournament_id: newTournament.id, player_id: parseInt(firstPlace), placement: 1 })
-        if (secondPlace) results.push({ tournament_id: newTournament.id, player_id: parseInt(secondPlace), placement: 2 })
-        if (thirdPlace) results.push({ tournament_id: newTournament.id, player_id: parseInt(thirdPlace), placement: 3 })
-        if (fourthPlace) results.push({ tournament_id: newTournament.id, player_id: parseInt(fourthPlace), placement: 4 })
-        
-        // Add other participants without placement (didn't finish in TOP 4)
-        otherParticipants.forEach(playerId => {
-          if (playerId && playerId !== firstPlace && playerId !== secondPlace && playerId !== thirdPlace && playerId !== fourthPlace) {
-            results.push({ tournament_id: newTournament.id, player_id: parseInt(playerId), placement: null })
-          }
-        })
-
-        if (results.length > 0) {
-          const { error: resultsError } = await supabase.from('tournament_results').insert(results)
-          if (resultsError) throw resultsError
+        if (!result.success) {
+          throw new Error(result.error)
         }
 
         toast.success('Torneio criado com sucesso!')
@@ -259,8 +250,12 @@ export default function AdminDashboard() {
     if (!confirm('Tem certeza que deseja excluir este torneio?')) return
 
     try {
-      const { error } = await supabase.from('tournaments').delete().eq('id', id)
-      if (error) throw error
+      const result = await deleteTournament(id)
+      
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
       toast.success('Torneio excluído com sucesso!')
       loadData()
     } catch (error: any) {

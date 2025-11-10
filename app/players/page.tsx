@@ -4,6 +4,8 @@ import { Trophy, Award, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { PageLayout } from '@/components/layout/page-layout'
 
+export const revalidate = 3600 // Revalidar a cada 1 hora
+
 export default async function PlayersPage() {
   const supabase = await createClient()
 

@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/header'
 import type { PlayerStats } from '@/lib/types'
 
+export const revalidate = 3600 // Revalidar a cada 1 hora
+
 export default async function RankingPage() {
   const supabase = await createClient()
 

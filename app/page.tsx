@@ -6,6 +6,8 @@ import { Trophy, Users, BarChart3, Calendar, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/header'
 
+export const revalidate = 3600 // Revalidar a cada 1 hora
+
 export default async function HomePage() {
   const supabase = await createClient()
 
