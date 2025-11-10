@@ -40,6 +40,7 @@ export default function AdminDashboard() {
   const [secondPlace, setSecondPlace] = useState('')
   const [thirdPlace, setThirdPlace] = useState('')
   const [fourthPlace, setFourthPlace] = useState('')
+  const [otherParticipants, setOtherParticipants] = useState<string[]>([])
 
   const supabase = createClient()
 
@@ -196,6 +197,13 @@ export default function AdminDashboard() {
         if (secondPlace) results.push({ tournament_id: editingTournament.id, player_id: parseInt(secondPlace), placement: 2 })
         if (thirdPlace) results.push({ tournament_id: editingTournament.id, player_id: parseInt(thirdPlace), placement: 3 })
         if (fourthPlace) results.push({ tournament_id: editingTournament.id, player_id: parseInt(fourthPlace), placement: 4 })
+        
+        // Add other participants without placement (didn't finish in TOP 4)
+        otherParticipants.forEach(playerId => {
+          if (playerId && playerId !== firstPlace && playerId !== secondPlace && playerId !== thirdPlace && playerId !== fourthPlace) {
+            results.push({ tournament_id: editingTournament.id, player_id: parseInt(playerId), placement: null })
+          }
+        })
 
         if (results.length > 0) {
           const { error: resultsError } = await supabase.from('tournament_results').insert(results)
@@ -219,6 +227,13 @@ export default function AdminDashboard() {
         if (secondPlace) results.push({ tournament_id: newTournament.id, player_id: parseInt(secondPlace), placement: 2 })
         if (thirdPlace) results.push({ tournament_id: newTournament.id, player_id: parseInt(thirdPlace), placement: 3 })
         if (fourthPlace) results.push({ tournament_id: newTournament.id, player_id: parseInt(fourthPlace), placement: 4 })
+        
+        // Add other participants without placement (didn't finish in TOP 4)
+        otherParticipants.forEach(playerId => {
+          if (playerId && playerId !== firstPlace && playerId !== secondPlace && playerId !== thirdPlace && playerId !== fourthPlace) {
+            results.push({ tournament_id: newTournament.id, player_id: parseInt(playerId), placement: null })
+          }
+        })
 
         if (results.length > 0) {
           const { error: resultsError } = await supabase.from('tournament_results').insert(results)
@@ -271,6 +286,7 @@ export default function AdminDashboard() {
     setSecondPlace('')
     setThirdPlace('')
     setFourthPlace('')
+    setOtherParticipants([])
   }
 
   const startEditPlayer = (player: any) => {
@@ -300,6 +316,13 @@ export default function AdminDashboard() {
     setSecondPlace(results.find((r: any) => r.placement === 2)?.player?.id?.toString() || '')
     setThirdPlace(results.find((r: any) => r.placement === 3)?.player?.id?.toString() || '')
     setFourthPlace(results.find((r: any) => r.placement === 4)?.player?.id?.toString() || '')
+    
+    // Load other participants (placement is NULL or doesn't exist in TOP 4)
+    const otherParticipantIds = results
+      .filter((r: any) => r.placement === null || r.placement > 4)
+      .map((r: any) => r.player?.id?.toString())
+      .filter(Boolean)
+    setOtherParticipants(otherParticipantIds)
     
     setShowTournamentForm(true)
   }
@@ -475,7 +498,7 @@ export default function AdminDashboard() {
             </div>
 
             <Dialog open={showTournamentForm} onOpenChange={setShowTournamentForm}>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingTournament ? 'Editar' : 'Novo'} Torneio</DialogTitle>
                   <DialogDescription>
@@ -586,6 +609,42 @@ export default function AdminDashboard() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-sm font-semibold mb-3">Outros Participantes (não ficaram no TOP 4)</h3>
+                    <div className="space-y-2">
+                      <Label>Selecione os demais jogadores que participaram</Label>
+                      <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                        {players
+                          .filter(p => 
+                            p.id.toString() !== firstPlace && 
+                            p.id.toString() !== secondPlace && 
+                            p.id.toString() !== thirdPlace && 
+                            p.id.toString() !== fourthPlace
+                          )
+                          .map((player) => (
+                            <label key={player.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded">
+                              <input
+                                type="checkbox"
+                                checked={otherParticipants.includes(player.id.toString())}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setOtherParticipants([...otherParticipants, player.id.toString()])
+                                  } else {
+                                    setOtherParticipants(otherParticipants.filter(id => id !== player.id.toString()))
+                                  }
+                                }}
+                                className="rounded"
+                              />
+                              <span className="text-sm">{player.name}</span>
+                            </label>
+                          ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {otherParticipants.length} jogador(es) selecionado(s)
+                      </p>
                     </div>
                   </div>
 

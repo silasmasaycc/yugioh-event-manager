@@ -102,7 +102,7 @@ export default function StatsPage() {
       players.forEach(player => {
         const playerResults = results.filter((r: any) => r.player?.id === player.id)
         const participations = playerResults.length
-        const tops = playerResults.filter((r: any) => r.placement <= 4).length
+        const tops = playerResults.filter((r: any) => r.placement !== null && r.placement <= 4).length
         const topPercentage = participations > 0 ? (tops / participations) * 100 : 0
 
         if (participations > 0) {
@@ -131,9 +131,9 @@ export default function StatsPage() {
       
       setTopPlayersWithTops(topByTops)
 
-      // Top 8 jogadores com melhor % de TOPs (mínimo 3 participações)
+      // Top 8 jogadores com melhor % de TOPs (mínimo 2 participações e pelo menos 1 TOP)
       const topByPercentage = [...allPlayerStats]
-        .filter(p => p.participations >= 3)
+        .filter(p => p.participations >= 2 && p.tops > 0)
         .sort((a, b) => b.topPercentage - a.topPercentage)
         .slice(0, 8)
       
@@ -337,7 +337,7 @@ export default function StatsPage() {
           <Card>
             <CardHeader>
               <CardTitle>📊 Top 8 - Melhor Taxa de Desempenho</CardTitle>
-              <p className="text-sm text-muted-foreground">Percentual de TOPs em relação às participações (mínimo 3 torneios)</p>
+              <p className="text-sm text-muted-foreground">Percentual de TOPs em relação às participações (mínimo 2 torneios e 1 TOP)</p>
             </CardHeader>
             <CardContent>
               {bestPerformance.length > 0 ? (

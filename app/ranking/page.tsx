@@ -22,7 +22,7 @@ export default async function RankingPage() {
   const playerStats: PlayerStats[] = (players || []).map(player => {
     const results = Array.isArray(player.tournament_results) ? player.tournament_results : []
     const totalTournaments = results.length
-    const totalTops = results.filter((r: any) => r.placement <= 4).length
+    const totalTops = results.filter((r: any) => r.placement !== null && r.placement <= 4).length
     const topPercentage = totalTournaments > 0 ? (totalTops / totalTournaments) * 100 : 0
 
     return {

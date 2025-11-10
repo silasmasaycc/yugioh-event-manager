@@ -24,7 +24,7 @@ export default async function PlayersPage() {
   const playersWithStats = players?.map(player => {
     const results = player.tournament_results || []
     const participations = results.length
-    const tops = results.filter((r: any) => r.placement <= 4).length
+    const tops = results.filter((r: any) => r.placement !== null && r.placement <= 4).length
     const topPercentage = participations > 0 ? (tops / participations) * 100 : 0
 
     return {
