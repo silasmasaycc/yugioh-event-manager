@@ -106,9 +106,10 @@ export default async function HomePage() {
         <h3 className="text-3xl font-bold mb-6">Últimos Torneios</h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {latestTournaments?.map((tournament: any) => {
-            const topResults = tournament.tournament_results
-              ?.sort((a: any, b: any) => a.placement - b.placement)
-              .slice(0, 4) || []
+            const topResults = (tournament.tournament_results || [])
+              .filter((r: any) => r.placement !== null && r.placement >= 1 && r.placement <= 4)
+              .sort((a: any, b: any) => a.placement - b.placement)
+              .slice(0, 4)
 
             return (
               <Card key={tournament.id}>
@@ -138,16 +139,23 @@ export default async function HomePage() {
                       <h4 className="text-sm font-semibold mb-3 text-gray-700">Classificação Final</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {topResults.map((result: any) => {
-                          const medals = ['🥇', '🥈', '🥉', '4️⃣']
+                          const medals: { [key: number]: string } = {
+                            1: '🥇',
+                            2: '🥈',
+                            3: '🥉',
+                            4: '4️⃣'
+                          }
+                          const medal = medals[result.placement] || '🏆'
+                          
                           return (
                             <div
-                              key={result.placement}
+                              key={`${result.tournament_id}-${result.placement}`}
                               className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                             >
-                              <span className="text-2xl">{medals[result.placement - 1]}</span>
-                              <div className="flex items-center gap-2 flex-1">
+                              <span className="text-2xl flex-shrink-0">{medal}</span>
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
                                 {result.player?.image_url ? (
-                                  <div className="relative h-8 w-8 rounded-full overflow-hidden">
+                                  <div className="relative h-8 w-8 rounded-full overflow-hidden flex-shrink-0">
                                     <Image
                                       src={result.player.image_url}
                                       alt={result.player.name}
@@ -156,13 +164,13 @@ export default async function HomePage() {
                                     />
                                   </div>
                                 ) : (
-                                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-xs font-bold text-purple-600">
+                                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-xs font-bold text-purple-600 flex-shrink-0">
                                     {result.player?.name?.charAt(0).toUpperCase()}
                                   </div>
                                 )}
-                                <span className="text-sm font-medium">{result.player?.name || 'N/A'}</span>
+                                <span className="text-sm font-medium truncate">{result.player?.name || 'N/A'}</span>
                               </div>
-                              <span className="text-xs text-gray-500">{result.placement}º lugar</span>
+                              <span className="text-xs text-gray-500 flex-shrink-0">{result.placement}º</span>
                             </div>
                           )
                         })}
