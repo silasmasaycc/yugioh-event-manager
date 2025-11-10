@@ -20,7 +20,9 @@ import {
   deletePlayer, 
   createTournament, 
   updateTournament, 
-  deleteTournament 
+  deleteTournament,
+  addPenalty,
+  deletePenalty 
 } from '@/app/admin/actions'
 
 export default function AdminDashboard() {
@@ -30,10 +32,13 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'players' | 'tournaments'>('tournaments')
   const [players, setPlayers] = useState<any[]>([])
   const [tournaments, setTournaments] = useState<any[]>([])
+  const [penalties, setPenalties] = useState<any[]>([])
   const [showPlayerForm, setShowPlayerForm] = useState(false)
   const [showTournamentForm, setShowTournamentForm] = useState(false)
+  const [showPenaltyForm, setShowPenaltyForm] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<any>(null)
   const [editingTournament, setEditingTournament] = useState<any>(null)
+  const [selectedPlayerForPenalty, setSelectedPlayerForPenalty] = useState<any>(null)
 
   // Player form
   const [playerName, setPlayerName] = useState('')
@@ -65,7 +70,7 @@ export default function AdminDashboard() {
   }, [user])
 
   const loadData = async () => {
-    const [{ data: playersData }, { data: tournamentsData }] = await Promise.all([
+    const [{ data: playersData }, { data: tournamentsData }, { data: penaltiesData }] = await Promise.all([
       supabase.from('players').select('*').order('name'),
       supabase
         .from('tournaments')
@@ -80,11 +85,22 @@ export default function AdminDashboard() {
             )
           )
         `)
-        .order('date', { ascending: false })
+        .order('date', { ascending: false }),
+      supabase
+        .from('penalties')
+        .select(`
+          *,
+          player:players (
+            id,
+            name
+          )
+        `)
+        .order('created_at', { ascending: false })
     ])
     
     setPlayers(playersData || [])
     setTournaments(tournamentsData || [])
+    setPenalties(penaltiesData || [])
   }
 
   const handleLogout = async () => {
@@ -271,6 +287,58 @@ export default function AdminDashboard() {
     setImageFile(null)
   }
 
+  const resetPenaltyForm = () => {
+    setShowPenaltyForm(false)
+    setSelectedPlayerForPenalty(null)
+  }
+
+  const handleAddPenalty = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!selectedPlayerForPenalty) {
+      toast.error('Selecione um jogador')
+      return
+    }
+
+    try {
+      const result = await addPenalty({
+        player_id: selectedPlayerForPenalty.id
+      })
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      toast.success('Double Loss registrado com sucesso!')
+      resetPenaltyForm()
+      loadData()
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao adicionar penalidade')
+    }
+  }
+
+  const handleDeletePenalty = async (id: string) => {
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem excluir penalidades')
+      return
+    }
+
+    if (!confirm('Tem certeza que deseja remover esta penalidade?')) return
+
+    try {
+      const result = await deletePenalty(id)
+      
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      toast.success('Penalidade removida com sucesso!')
+      loadData()
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao excluir penalidade')
+    }
+  }
+
   const resetTournamentForm = () => {
     setShowTournamentForm(false)
     setEditingTournament(null)
@@ -380,10 +448,16 @@ export default function AdminDashboard() {
           <div>
             <div className="mb-6 flex justify-between items-center">
               <h2 className="text-2xl font-bold">Gerenciar Jogadores</h2>
-              <Button onClick={() => setShowPlayerForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Jogador
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowPenaltyForm(true)} variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Double Loss
+                </Button>
+                <Button onClick={() => setShowPlayerForm(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Jogador
+                </Button>
+              </div>
             </div>
 
             <Dialog open={showPlayerForm} onOpenChange={setShowPlayerForm}>
@@ -433,8 +507,52 @@ export default function AdminDashboard() {
               </DialogContent>
             </Dialog>
 
+            {/* Penalty Dialog */}
+            <Dialog open={showPenaltyForm} onOpenChange={setShowPenaltyForm}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Registrar Double Loss</DialogTitle>
+                  <DialogDescription>
+                    Double Loss aplicado automaticamente quando o tempo de 50 minutos se esgota
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddPenalty} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="penaltyPlayer">Jogador</Label>
+                    <Select 
+                      value={selectedPlayerForPenalty?.id?.toString() || ''} 
+                      onValueChange={(value) => {
+                        const player = players.find(p => p.id.toString() === value)
+                        setSelectedPlayerForPenalty(player)
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o jogador" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {players.map((player) => (
+                          <SelectItem key={player.id} value={player.id.toString()}>
+                            {player.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button type="submit">Registrar</Button>
+                    <Button type="button" variant="outline" onClick={resetPenaltyForm}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {players.map((player) => (
+              {players.map((player) => {
+                const playerPenalties = penalties.filter(p => p.player?.id === player.id)
+                return (
                 <Card key={player.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-4">
@@ -454,9 +572,31 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex-1">
                         <h3 className="font-bold">{player.name}</h3>
+                        {playerPenalties.length > 0 && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-sm text-red-600 font-semibold">
+                              ⚠️ {playerPenalties.length} Double Loss{playerPenalties.length > 1 ? 'es' : ''}
+                            </p>
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-5 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-300"
+                                onClick={() => {
+                                  if (playerPenalties.length > 0) {
+                                    handleDeletePenalty(playerPenalties[0].id)
+                                  }
+                                }}
+                                title="Remover 1 Double Loss"
+                              >
+                                -1
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {isAdmin && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 ml-auto">
                           <Button
                             size="sm"
                             variant="outline"
@@ -476,7 +616,7 @@ export default function AdminDashboard() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           </div>
         )}
@@ -655,10 +795,10 @@ export default function AdminDashboard() {
 
             <div className="space-y-4">
               {tournaments.map((tournament) => {
-                // Ordenar resultados por placement e pegar top 4
+                // Filtrar apenas TOP 4 (placement 1-4)
                 const topResults = (tournament.tournament_results || [])
+                  .filter((r: any) => r.placement !== null && r.placement >= 1 && r.placement <= 4)
                   .sort((a: any, b: any) => a.placement - b.placement)
-                  .slice(0, 4)
 
                 return (
                   <Card key={tournament.id}>

@@ -9,16 +9,21 @@ export const revalidate = 3600 // Revalidar a cada 1 hora
 export default async function PlayersPage() {
   const supabase = await createClient()
 
-  const { data: players } = await supabase
-    .from('players')
-    .select(`
-      *,
-      tournament_results(
-        placement,
-        tournament_id
-      )
-    `)
-    .order('name')
+  const [{ data: players }, { data: penalties }] = await Promise.all([
+    supabase
+      .from('players')
+      .select(`
+        *,
+        tournament_results(
+          placement,
+          tournament_id
+        )
+      `)
+      .order('name'),
+    supabase
+      .from('penalties')
+      .select('player_id')
+  ])
 
   // Calcular estatísticas para cada jogador
   const playersWithStats = players?.map(player => {
@@ -26,12 +31,14 @@ export default async function PlayersPage() {
     const participations = results.length
     const tops = results.filter((r: any) => r.placement !== null && r.placement <= 4).length
     const topPercentage = participations > 0 ? (tops / participations) * 100 : 0
+    const penaltyCount = penalties?.filter((p: any) => p.player_id === player.id).length || 0
 
     return {
       ...player,
       participations,
       tops,
-      topPercentage
+      topPercentage,
+      penalties: penaltyCount
     }
   }).sort((a, b) => b.tops - a.tops) // Ordenar por número de TOPs
 
@@ -92,6 +99,15 @@ export default async function PlayersPage() {
                       {player.topPercentage.toFixed(1)}%
                     </span>
                   </div>
+
+                  {player.penalties > 0 && (
+                    <div className="flex items-center justify-between text-sm pt-2 border-t border-red-200">
+                      <span className="flex items-center gap-1.5 text-red-600">
+                        ⚠️ Double Loss
+                      </span>
+                      <span className="font-semibold text-red-600">{player.penalties}</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

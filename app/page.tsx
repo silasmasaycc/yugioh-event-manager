@@ -188,7 +188,7 @@ export default async function HomePage() {
 
       {/* Footer */}
       <footer className="border-t mt-16 py-8 text-center text-gray-600 dark:text-gray-400">
-        <p>© 2024 Yu-Gi-Oh! Event Manager. Desenvolvido com Next.js e Supabase.</p>
+        <p>© 2025 Yu-Gi-Oh! Event Manager. Desenvolvido por Silas Cunha.</p>
       </footer>
     </div>
   )

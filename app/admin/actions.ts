@@ -211,6 +211,47 @@ export async function deleteTournament(id: number) {
   return { success: true }
 }
 
+// ============= PENALTIES =============
+
+export async function addPenalty(data: { player_id: number }) {
+  const supabase = await createClient()
+  
+  const { data: penalty, error } = await supabase
+    .from('penalties')
+    .insert([{ player_id: data.player_id }])
+    .select()
+    .single()
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  // Revalidar páginas que mostram penalidades
+  revalidatePath('/players')
+  revalidatePath('/stats')
+
+  return { success: true, data: penalty }
+}
+
+export async function deletePenalty(id: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('penalties')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  // Revalidar páginas que mostram penalidades
+  revalidatePath('/players')
+  revalidatePath('/stats')
+
+  return { success: true }
+}
+
 // ============= UTILITY =============
 
 export async function revalidateAllPages() {
