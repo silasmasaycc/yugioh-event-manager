@@ -2,11 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PlayerCard } from '@/components/player/player-card'
 import { calculatePlayerStats } from '@/lib/utils/player-stats'
-import { REVALIDATE_TIME } from '@/lib/constants'
 import { ERROR_MESSAGES, LABELS } from '@/lib/constants/messages'
 import { logger } from '@/lib/utils/logger'
 
-export const revalidate = REVALIDATE_TIME
+export const revalidate = 3600 // 1 hora
 
 export default async function PlayersPage() {
   const supabase = await createClient()

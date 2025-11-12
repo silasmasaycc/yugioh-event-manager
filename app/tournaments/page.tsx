@@ -3,12 +3,12 @@ import { MapPin, Users, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
 import { PageLayout } from '@/components/layout/page-layout'
-import { REVALIDATE_TIME, TOP_POSITIONS, MEDAL_EMOJIS } from '@/lib/constants'
+import { TOP_POSITIONS, MEDAL_EMOJIS } from '@/lib/constants'
 import { ERROR_MESSAGES, LABELS } from '@/lib/constants/messages'
 import { PlayerAvatar } from '@/components/player/player-avatar'
 import { logger } from '@/lib/utils/logger'
 
-export const revalidate = REVALIDATE_TIME
+export const revalidate = 3600 // 1 hora
 
 export default async function TournamentsPage() {
   const supabase = await createClient()
