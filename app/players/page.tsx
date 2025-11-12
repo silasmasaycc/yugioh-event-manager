@@ -1,51 +1,46 @@
-import Image from 'next/image'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Trophy, Award, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { PageLayout } from '@/components/layout/page-layout'
+import { PlayerCard } from '@/components/player/player-card'
+import { calculatePlayerStats } from '@/lib/utils/player-stats'
+import { REVALIDATE_TIME } from '@/lib/constants'
+import { ERROR_MESSAGES, LABELS } from '@/lib/constants/messages'
+import { logger } from '@/lib/utils/logger'
 
-export const revalidate = 3600 // Revalidar a cada 1 hora
+export const revalidate = REVALIDATE_TIME
 
 export default async function PlayersPage() {
   const supabase = await createClient()
 
-  const [{ data: players }, { data: penalties }] = await Promise.all([
-    supabase
-      .from('players')
-      .select(`
-        *,
-        tournament_results(
-          placement,
-          tournament_id
-        )
-      `)
-      .order('name'),
-    supabase
-      .from('penalties')
-      .select('player_id')
-  ])
+  // Query otimizada com LEFT JOIN via Supabase
+  const { data: players, error } = await supabase
+    .from('players')
+    .select(`
+      *,
+      tournament_results(placement, tournament_id),
+      penalties(player_id)
+    `)
+    .order('name')
 
-  // Calcular estatísticas para cada jogador
-  const playersWithStats = players?.map(player => {
-    const results = player.tournament_results || []
-    const participations = results.length
-    const tops = results.filter((r: any) => r.placement !== null && r.placement <= 4).length
-    const topPercentage = participations > 0 ? (tops / participations) * 100 : 0
-    const penaltyCount = penalties?.filter((p: any) => p.player_id === player.id).length || 0
+  if (error) {
+    logger.error(ERROR_MESSAGES.LOAD_PLAYERS_ERROR, error)
+    return (
+      <PageLayout activeRoute="/players">
+        <div className="text-center py-12">
+          <p className="text-xl text-red-600">{ERROR_MESSAGES.LOAD_PLAYERS_ERROR}</p>
+        </div>
+      </PageLayout>
+    )
+  }
 
-    return {
-      ...player,
-      participations,
-      tops,
-      topPercentage,
-      penalties: penaltyCount
-    }
-  }).sort((a, b) => b.tops - a.tops) // Ordenar por número de TOPs
+  // Calcular estatísticas para cada jogador usando a função utilitária
+  const playersWithStats = players?.map(player => 
+    calculatePlayerStats(player, player.penalties || [])
+  ).sort((a, b) => b.totalTops - a.totalTops) // Ordenar por número de TOPs
 
   return (
     <PageLayout activeRoute="/players">
       <div className="mb-8">
-        <h2 className="text-4xl font-bold mb-2">Jogadores</h2>
+        <h2 className="text-4xl font-bold mb-2">{LABELS.PLAYERS}</h2>
         <p className="text-gray-600 dark:text-gray-300">
           Lista completa de jogadores cadastrados no sistema
         </p>
@@ -53,71 +48,14 @@ export default async function PlayersPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {playersWithStats?.map((player) => (
-            <Card key={player.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <CardHeader className="p-0">
-                <div className="h-48 relative bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900 dark:to-blue-900">
-                  {player.image_url ? (
-                    <Image
-                      src={player.image_url}
-                      alt={player.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-5xl font-bold text-purple-600">
-                      {player.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="p-4">
-                <CardTitle className="text-lg mb-3">{player.name}</CardTitle>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-gray-600">
-                      <Trophy className="h-4 w-4" />
-                      Participações
-                    </span>
-                    <span className="font-semibold">{player.participations}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-gray-600">
-                      <Award className="h-4 w-4" />
-                      TOPs (1º-4º)
-                    </span>
-                    <span className="font-semibold text-purple-600">{player.tops}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-gray-600">
-                      <TrendingUp className="h-4 w-4" />
-                      Taxa de TOPs
-                    </span>
-                    <span className="font-semibold text-blue-600">
-                      {player.topPercentage.toFixed(1)}%
-                    </span>
-                  </div>
-
-                  {player.penalties > 0 && (
-                    <div className="flex items-center justify-between text-sm pt-2 border-t border-red-200">
-                      <span className="flex items-center gap-1.5 text-red-600">
-                        ⚠️ Double Loss
-                      </span>
-                      <span className="font-semibold text-red-600">{player.penalties}</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          <PlayerCard key={player.id} player={player} showPenalties={true} />
+        ))}
+      </div>
 
       {(!playersWithStats || playersWithStats.length === 0) && (
         <div className="text-center py-12">
           <p className="text-xl text-gray-600 dark:text-gray-300">
-            Nenhum jogador cadastrado ainda.
+            {LABELS.NO_PLAYERS}
           </p>
         </div>
       )}

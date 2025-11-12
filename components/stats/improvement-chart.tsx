@@ -1,0 +1,301 @@
+'use client'
+
+import { useMemo, useCallback, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
+
+interface TournamentResult {
+  date: string
+  tournamentId: number
+  playerId: number
+  playerName: string
+  placement: number | null
+}
+
+interface ImprovementData {
+  name: string
+  initialPerformance: number
+  recentPerformance: number
+  improvement: number
+  trend: 'improving' | 'stable' | 'declining'
+}
+
+interface ImprovementChartProps {
+  tournaments: { id: number; date: string }[]
+  results: TournamentResult[]
+  topPlayers: string[]
+  colors: string[]
+}
+
+export function ImprovementChart({ tournaments, results, topPlayers, colors }: ImprovementChartProps) {
+  const [hiddenPlayers, setHiddenPlayers] = useState<Set<string>>(new Set())
+
+  // Calcular taxa de melhoria
+  const improvementData = useMemo(() => {
+    if (!tournaments || !results || tournaments.length < 4) return []
+
+    const sortedTournaments = [...tournaments].sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    )
+
+    // Dividir em dois períodos: primeiros 40% vs últimos 40%
+    const totalTournaments = sortedTournaments.length
+    const periodSize = Math.max(2, Math.floor(totalTournaments * 0.4))
+    
+    const initialPeriod = sortedTournaments.slice(0, periodSize)
+    const recentPeriod = sortedTournaments.slice(-periodSize)
+
+    return topPlayers.map(playerName => {
+      // Calcular performance no período inicial
+      const initialResults = results.filter(r => 
+        initialPeriod.some(t => t.id === r.tournamentId) && 
+        r.playerName === playerName
+      )
+      const initialTops = initialResults.filter(r => r.placement !== null && r.placement <= 4).length
+      const initialParticipations = initialResults.length
+      const initialPerformance = initialParticipations > 0 
+        ? (initialTops / initialParticipations) * 100 
+        : 0
+
+      // Calcular performance no período recente
+      const recentResults = results.filter(r => 
+        recentPeriod.some(t => t.id === r.tournamentId) && 
+        r.playerName === playerName
+      )
+      const recentTops = recentResults.filter(r => r.placement !== null && r.placement <= 4).length
+      const recentParticipations = recentResults.length
+      const recentPerformance = recentParticipations > 0 
+        ? (recentTops / recentParticipations) * 100 
+        : 0
+
+      // Calcular melhoria
+      const improvement = recentPerformance - initialPerformance
+
+      // Determinar tendência
+      let trend: 'improving' | 'stable' | 'declining'
+      if (improvement > 10) trend = 'improving'
+      else if (improvement < -10) trend = 'declining'
+      else trend = 'stable'
+
+      return {
+        name: playerName,
+        initialPerformance: Math.round(initialPerformance * 10) / 10,
+        recentPerformance: Math.round(recentPerformance * 10) / 10,
+        improvement: Math.round(improvement * 10) / 10,
+        trend,
+        // Dados adicionais para tooltip
+        initialData: { tops: initialTops, participations: initialParticipations },
+        recentData: { tops: recentTops, participations: recentParticipations }
+      }
+    })
+    .filter(data => data.initialData.participations > 0 || data.recentData.participations > 0)
+    .sort((a, b) => b.improvement - a.improvement)
+  }, [tournaments, results, topPlayers])
+
+  const filteredData = useMemo(() =>
+    improvementData.filter(player => !hiddenPlayers.has(player.name)),
+    [improvementData, hiddenPlayers]
+  )
+
+  const togglePlayer = useCallback((playerName: string) => {
+    setHiddenPlayers(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(playerName)) {
+        newSet.delete(playerName)
+      } else {
+        newSet.add(playerName)
+      }
+      return newSet
+    })
+  }, [])
+
+  const getColorByTrend = (trend: string): string => {
+    if (trend === 'improving') return '#10b981' // Verde
+    if (trend === 'declining') return '#ef4444' // Vermelho
+    return '#f59e0b' // Amarelo (estável)
+  }
+
+  if (improvementData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>📈 Taxa de Melhoria</CardTitle>
+          <p className="text-sm text-muted-foreground">Evolução do desempenho: período inicial vs período recente</p>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-gray-500 py-8">Dados insuficientes (mínimo 4 torneios)</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>📈 Taxa de Melhoria</CardTitle>
+        <p className="text-sm text-muted-foreground">Evolução do desempenho: período inicial vs período recente</p>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart 
+            data={filteredData} 
+            layout="vertical"
+            margin={{ top: 5, right: 80, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+            <XAxis 
+              type="number"
+              domain={[-100, 100]}
+              tickFormatter={(value) => `${value > 0 ? '+' : ''}${value}%`}
+            />
+            <YAxis 
+              type="category" 
+              dataKey="name" 
+              width={120}
+              tick={{ fontSize: 12 }}
+            />
+            <Tooltip 
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload as ImprovementData & { 
+                    initialData: { tops: number, participations: number },
+                    recentData: { tops: number, participations: number }
+                  }
+                  
+                  return (
+                    <div className="bg-white p-4 border rounded shadow-lg">
+                      <p className="font-semibold text-sm mb-3">{data.name}</p>
+                      
+                      <div className="space-y-3">
+                        {/* Período Inicial */}
+                        <div className="pb-2 border-b">
+                          <p className="text-xs text-gray-500 mb-1">📅 Período Inicial</p>
+                          <p className="text-lg font-bold text-gray-700">{data.initialPerformance}%</p>
+                          <p className="text-xs text-gray-600">
+                            {data.initialData.tops} TOP{data.initialData.tops !== 1 ? 'S' : ''} em {data.initialData.participations} torneio{data.initialData.participations !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+
+                        {/* Período Recente */}
+                        <div className="pb-2 border-b">
+                          <p className="text-xs text-gray-500 mb-1">⚡ Período Recente</p>
+                          <p className="text-lg font-bold text-blue-600">{data.recentPerformance}%</p>
+                          <p className="text-xs text-gray-600">
+                            {data.recentData.tops} TOP{data.recentData.tops !== 1 ? 'S' : ''} em {data.recentData.participations} torneio{data.recentData.participations !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+
+                        {/* Melhoria */}
+                        <div className="p-2 rounded" style={{ 
+                          backgroundColor: data.trend === 'improving' ? '#d1fae5' : 
+                                         data.trend === 'declining' ? '#fee2e2' : '#fef3c7'
+                        }}>
+                          <p className="text-xs font-semibold mb-1">
+                            {data.trend === 'improving' && '📈 Melhorando!'}
+                            {data.trend === 'declining' && '📉 Em queda'}
+                            {data.trend === 'stable' && '➡️ Estável'}
+                          </p>
+                          <p className="text-2xl font-bold" style={{ 
+                            color: getColorByTrend(data.trend)
+                          }}>
+                            {data.improvement > 0 ? '+' : ''}{data.improvement}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              }}
+            />
+            <Bar 
+              dataKey="improvement" 
+              radius={[0, 8, 8, 0]}
+              animationDuration={1000}
+            >
+              {filteredData.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`}
+                  fill={getColorByTrend(entry.trend)}
+                  style={{ 
+                    transition: 'all 300ms ease-in-out',
+                    cursor: 'pointer',
+                    opacity: 0.9
+                  }}
+                />
+              ))}
+              <LabelList 
+                dataKey="improvement"
+                position="right"
+                content={(props: any) => {
+                  const { x, y, width, value, index } = props
+                  if (index === undefined || !filteredData[index]) return null
+                  
+                  return (
+                    <text
+                      x={x + width + 5}
+                      y={y + 10}
+                      fill="#374151"
+                      fontSize="12"
+                      fontWeight="600"
+                    >
+                      {value > 0 ? '+' : ''}{value}%
+                    </text>
+                  )
+                }}
+              />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+
+        {/* Legenda */}
+        <div className="flex justify-center gap-6 mt-6 mb-4 text-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#10b981' }} />
+            <span className="text-gray-600">Melhorando (&gt;+10%)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#f59e0b' }} />
+            <span className="text-gray-600">Estável (-10% a +10%)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ef4444' }} />
+            <span className="text-gray-600">Em queda (&lt;-10%)</span>
+          </div>
+        </div>
+
+        {/* Botões de toggle */}
+        <div className="flex flex-wrap gap-3 justify-center mt-4 pt-4 border-t">
+          {improvementData.map((player, index) => {
+            const isHidden = hiddenPlayers.has(player.name)
+            return (
+              <button
+                key={index}
+                onClick={() => togglePlayer(player.name)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out hover:bg-gray-100 ${
+                  isHidden ? 'opacity-40' : 'opacity-100'
+                }`}
+              >
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: getColorByTrend(player.trend) }}
+                />
+                <span className="text-sm font-medium">
+                  {player.name}: {player.improvement > 0 ? '+' : ''}{player.improvement}%
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Insights */}
+        <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+          <p className="text-xs text-green-800">
+            📈 <span className="font-semibold">Melhoria:</span> Compara os primeiros 40% dos torneios com os últimos 40%. 
+            Valores positivos indicam evolução no desempenho!
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}

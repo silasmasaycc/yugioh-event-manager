@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Trophy, LogOut, Plus, Edit, Trash2, Upload } from 'lucide-react'
+import { Trophy, LogOut, Plus, Edit, Trash2, Upload, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth, useUserRole } from '@/lib/hooks/use-auth'
 import { toast } from 'sonner'
@@ -35,10 +35,8 @@ export default function AdminDashboard() {
   const [penalties, setPenalties] = useState<any[]>([])
   const [showPlayerForm, setShowPlayerForm] = useState(false)
   const [showTournamentForm, setShowTournamentForm] = useState(false)
-  const [showPenaltyForm, setShowPenaltyForm] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<any>(null)
   const [editingTournament, setEditingTournament] = useState<any>(null)
-  const [selectedPlayerForPenalty, setSelectedPlayerForPenalty] = useState<any>(null)
 
   // Player form
   const [playerName, setPlayerName] = useState('')
@@ -287,36 +285,6 @@ export default function AdminDashboard() {
     setImageFile(null)
   }
 
-  const resetPenaltyForm = () => {
-    setShowPenaltyForm(false)
-    setSelectedPlayerForPenalty(null)
-  }
-
-  const handleAddPenalty = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!selectedPlayerForPenalty) {
-      toast.error('Selecione um jogador')
-      return
-    }
-
-    try {
-      const result = await addPenalty({
-        player_id: selectedPlayerForPenalty.id
-      })
-
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-
-      toast.success('Double Loss registrado com sucesso!')
-      resetPenaltyForm()
-      loadData()
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao adicionar penalidade')
-    }
-  }
-
   const handleDeletePenalty = async (id: string) => {
     if (!isAdmin) {
       toast.error('Apenas administradores podem excluir penalidades')
@@ -448,16 +416,10 @@ export default function AdminDashboard() {
           <div>
             <div className="mb-6 flex justify-between items-center">
               <h2 className="text-2xl font-bold">Gerenciar Jogadores</h2>
-              <div className="flex gap-2">
-                <Button onClick={() => setShowPenaltyForm(true)} variant="outline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Double Loss
-                </Button>
-                <Button onClick={() => setShowPlayerForm(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Jogador
-                </Button>
-              </div>
+              <Button onClick={() => setShowPlayerForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Jogador
+              </Button>
             </div>
 
             <Dialog open={showPlayerForm} onOpenChange={setShowPlayerForm}>
@@ -507,55 +469,14 @@ export default function AdminDashboard() {
               </DialogContent>
             </Dialog>
 
-            {/* Penalty Dialog */}
-            <Dialog open={showPenaltyForm} onOpenChange={setShowPenaltyForm}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Registrar Double Loss</DialogTitle>
-                  <DialogDescription>
-                    Double Loss aplicado automaticamente quando o tempo de 50 minutos se esgota
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleAddPenalty} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="penaltyPlayer">Jogador</Label>
-                    <Select 
-                      value={selectedPlayerForPenalty?.id?.toString() || ''} 
-                      onValueChange={(value) => {
-                        const player = players.find(p => p.id.toString() === value)
-                        setSelectedPlayerForPenalty(player)
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o jogador" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {players.map((player) => (
-                          <SelectItem key={player.id} value={player.id.toString()}>
-                            {player.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button type="submit">Registrar</Button>
-                    <Button type="button" variant="outline" onClick={resetPenaltyForm}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {players.map((player) => {
                 const playerPenalties = penalties.filter(p => p.player?.id === player.id)
                 return (
                 <Card key={player.id}>
                   <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
+                    {/* Cabeçalho: Avatar + Nome + Botões de ação */}
+                    <div className="flex items-center gap-4 mb-3">
                       <div className="relative h-16 w-16 rounded-full overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100">
                         {player.image_url ? (
                           <Image
@@ -570,37 +491,16 @@ export default function AdminDashboard() {
                           </div>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold">{player.name}</h3>
-                        {playerPenalties.length > 0 && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-sm text-red-600 font-semibold">
-                              ⚠️ {playerPenalties.length} Double Loss{playerPenalties.length > 1 ? 'es' : ''}
-                            </p>
-                            {isAdmin && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-5 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-300"
-                                onClick={() => {
-                                  if (playerPenalties.length > 0) {
-                                    handleDeletePenalty(playerPenalties[0].id)
-                                  }
-                                }}
-                                title="Remover 1 Double Loss"
-                              >
-                                -1
-                              </Button>
-                            )}
-                          </div>
-                        )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold truncate">{player.name}</h3>
                       </div>
                       {isAdmin && (
-                        <div className="flex gap-2 ml-auto">
+                        <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => startEditPlayer(player)}
+                            title="Editar jogador"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -608,12 +508,94 @@ export default function AdminDashboard() {
                             size="sm"
                             variant="destructive"
                             onClick={() => handleDeletePlayer(player.id)}
+                            title="Excluir jogador"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       )}
                     </div>
+
+                    {/* Seção de Double Loss (separada) */}
+                    {(playerPenalties.length > 0 || isAdmin) && (
+                      <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                        {playerPenalties.length > 0 ? (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4 text-red-600" />
+                              <span className="text-sm text-red-600 font-semibold">
+                                {playerPenalties.length} Double Loss{playerPenalties.length > 1 ? 'es' : ''}
+                              </span>
+                            </div>
+                            {isAdmin && (
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-3 text-xs font-semibold text-green-600 hover:text-green-700 hover:bg-green-50 border-green-400 hover:border-green-500"
+                                  onClick={() => {
+                                    if (playerPenalties.length > 0) {
+                                      handleDeletePenalty(playerPenalties[0].id)
+                                    }
+                                  }}
+                                  title="Remover 1 Double Loss"
+                                >
+                                  -1
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-3 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 border-red-400 hover:border-red-500"
+                                  onClick={async () => {
+                                    try {
+                                      const result = await addPenalty({
+                                        player_id: player.id
+                                      })
+                                      if (!result.success) {
+                                        throw new Error(result.error)
+                                      }
+                                      toast.success('Double Loss adicionado!')
+                                      loadData()
+                                    } catch (error: any) {
+                                      toast.error(error.message || 'Erro ao adicionar penalidade')
+                                    }
+                                  }}
+                                  title="Adicionar 1 Double Loss"
+                                >
+                                  +1
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="w-full h-8 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-300 hover:border-red-300"
+                              onClick={async () => {
+                                try {
+                                  const result = await addPenalty({
+                                    player_id: player.id
+                                  })
+                                  if (!result.success) {
+                                    throw new Error(result.error)
+                                  }
+                                  toast.success('Double Loss adicionado!')
+                                  loadData()
+                                } catch (error: any) {
+                                  toast.error(error.message || 'Erro ao adicionar penalidade')
+                                }
+                              }}
+                              title="Adicionar Double Loss"
+                            >
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Adicionar Double Loss
+                            </Button>
+                          )
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )})}

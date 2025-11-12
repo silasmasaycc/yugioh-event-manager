@@ -22,8 +22,7 @@ export async function createPlayer(data: { name: string; image_url?: string }) {
     return { success: false, error: error.message }
   }
 
-  // Revalidar páginas que mostram jogadores
-  revalidatePath('/')
+  // Revalidar apenas páginas que listam jogadores
   revalidatePath('/players')
   revalidatePath('/ranking')
 
@@ -44,11 +43,10 @@ export async function updatePlayer(id: number, data: { name: string; image_url?:
     return { success: false, error: error.message }
   }
 
-  // Revalidar páginas que mostram jogadores
-  revalidatePath('/')
+  // Revalidar páginas que exibem dados do jogador
   revalidatePath('/players')
   revalidatePath('/ranking')
-  revalidatePath('/tournaments')
+  revalidatePath('/tournaments') // Pode aparecer em resultados de torneios
 
   return { success: true, data: player }
 }
@@ -65,8 +63,7 @@ export async function deletePlayer(id: number) {
     return { success: false, error: error.message }
   }
 
-  // Revalidar páginas que mostram jogadores
-  revalidatePath('/')
+  // Revalidar todas páginas pois jogador pode estar em vários lugares
   revalidatePath('/players')
   revalidatePath('/ranking')
   revalidatePath('/tournaments')

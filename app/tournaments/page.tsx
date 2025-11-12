@@ -1,18 +1,19 @@
-import Link from 'next/link'
-import Image from 'next/image'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Trophy, MapPin, Users, Calendar } from 'lucide-react'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { MapPin, Users, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
 import { PageLayout } from '@/components/layout/page-layout'
+import { REVALIDATE_TIME, TOP_POSITIONS, MEDAL_EMOJIS } from '@/lib/constants'
+import { ERROR_MESSAGES, LABELS } from '@/lib/constants/messages'
+import { PlayerAvatar } from '@/components/player/player-avatar'
+import { logger } from '@/lib/utils/logger'
 
-export const revalidate = 3600 // Revalidar a cada 1 hora
+export const revalidate = REVALIDATE_TIME
 
 export default async function TournamentsPage() {
   const supabase = await createClient()
 
-  const { data: tournaments } = await supabase
+  const { data: tournaments, error } = await supabase
     .from('tournaments')
     .select(`
       *,
@@ -27,10 +28,21 @@ export default async function TournamentsPage() {
     `)
     .order('date', { ascending: false })
 
+  if (error) {
+    logger.error(ERROR_MESSAGES.LOAD_TOURNAMENTS_ERROR, error)
+    return (
+      <PageLayout activeRoute="/tournaments">
+        <div className="text-center py-12">
+          <p className="text-xl text-red-600">{ERROR_MESSAGES.LOAD_TOURNAMENTS_ERROR}</p>
+        </div>
+      </PageLayout>
+    )
+  }
+
   return (
     <PageLayout activeRoute="/tournaments">
       <div className="mb-8">
-        <h2 className="text-4xl font-bold mb-2">Torneios</h2>
+        <h2 className="text-4xl font-bold mb-2">{LABELS.TOURNAMENTS}</h2>
         <p className="text-gray-600 dark:text-gray-300">
           Histórico completo de torneios realizados
         </p>
@@ -40,9 +52,9 @@ export default async function TournamentsPage() {
           {tournaments?.map((tournament) => {
             // Ordenar resultados por placement e pegar top 4
             const topResults = (tournament.tournament_results || [])
-              .filter((r: any) => r.placement !== null && r.placement >= 1 && r.placement <= 4)
-              .sort((a: any, b: any) => a.placement - b.placement)
-              .slice(0, 4)
+              .filter((result: any) => result.placement !== null && result.placement >= 1 && result.placement <= TOP_POSITIONS)
+              .sort((resultA: any, resultB: any) => resultA.placement - resultB.placement)
+              .slice(0, TOP_POSITIONS)
 
             return (
               <Card key={tournament.id} className="hover:shadow-lg transition-shadow">
@@ -72,13 +84,7 @@ export default async function TournamentsPage() {
                       <h4 className="text-sm font-semibold mb-3 text-gray-700">Classificação Final</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {topResults.map((result: any) => {
-                          const medals: { [key: number]: string } = {
-                            1: '🥇',
-                            2: '🥈',
-                            3: '🥉',
-                            4: '4️⃣'
-                          }
-                          const medal = medals[result.placement] || '🏆'
+                          const medal = MEDAL_EMOJIS[result.placement as keyof typeof MEDAL_EMOJIS] || '🏆'
                           
                           return (
                             <div
@@ -87,20 +93,11 @@ export default async function TournamentsPage() {
                             >
                               <span className="text-2xl flex-shrink-0">{medal}</span>
                               <div className="flex items-center gap-2 flex-1 min-w-0">
-                                {result.player?.image_url ? (
-                                  <div className="relative h-8 w-8 rounded-full overflow-hidden flex-shrink-0">
-                                    <Image
-                                      src={result.player.image_url}
-                                      alt={result.player.name}
-                                      fill
-                                      className="object-cover"
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-xs font-bold text-purple-600 flex-shrink-0">
-                                    {result.player?.name?.charAt(0).toUpperCase()}
-                                  </div>
-                                )}
+                                <PlayerAvatar
+                                  imageUrl={result.player?.image_url}
+                                  playerName={result.player?.name || 'N/A'}
+                                  size="sm"
+                                />
                                 <span className="text-sm font-medium truncate">{result.player?.name || 'N/A'}</span>
                               </div>
                               <span className="text-xs text-gray-500 flex-shrink-0">{result.placement}º</span>
@@ -119,7 +116,7 @@ export default async function TournamentsPage() {
       {(!tournaments || tournaments.length === 0) && (
         <div className="text-center py-12">
           <p className="text-xl text-gray-600 dark:text-gray-300">
-            Nenhum torneio cadastrado ainda.
+            {LABELS.NO_TOURNAMENTS}
           </p>
         </div>
       )}
