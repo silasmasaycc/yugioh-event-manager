@@ -4,6 +4,7 @@ import { Edit, Trash2, Calendar, Users, MapPin } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import type { TournamentWithResults } from '@/lib/types'
 import { PlayerAvatar } from '@/components/player/player-avatar'
+import { MEDAL_ICONS } from '@/lib/constants'
 
 interface TournamentListProps {
   tournaments: TournamentWithResults[]
@@ -72,8 +73,7 @@ export function TournamentList({ tournaments, isAdmin, onEdit, onDelete }: Tourn
                   <h4 className="text-xs font-semibold mb-2 text-gray-700">TOP 4</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {topResults.map((result) => {
-                      const medals = { 1: '🥇', 2: '🥈', 3: '🥉', 4: '4️⃣' }
-                      const medal = medals[result.placement as keyof typeof medals] || '🏆'
+                      const medal = MEDAL_ICONS[result.placement as 1 | 2 | 3 | 4] || '🏆'
                       
                       return (
                         <div

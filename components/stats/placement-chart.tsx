@@ -3,6 +3,7 @@
 import { useMemo, useCallback, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { MEDAL_ICONS } from '@/lib/constants'
 
 interface PlacementDistribution {
   name: string
@@ -62,10 +63,10 @@ export function PlacementChart({ data, colors }: PlacementChartProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {filteredData.map((player, index) => {
             const radarData = [
-              { placement: '1º', value: player['1º Lugar'], fullMark: Math.max(player['1º Lugar'], player['2º Lugar'], player['3º Lugar'], player['4º Lugar']) + 2 },
-              { placement: '2º', value: player['2º Lugar'], fullMark: Math.max(player['1º Lugar'], player['2º Lugar'], player['3º Lugar'], player['4º Lugar']) + 2 },
-              { placement: '3º', value: player['3º Lugar'], fullMark: Math.max(player['1º Lugar'], player['2º Lugar'], player['3º Lugar'], player['4º Lugar']) + 2 },
-              { placement: '4º', value: player['4º Lugar'], fullMark: Math.max(player['1º Lugar'], player['2º Lugar'], player['3º Lugar'], player['4º Lugar']) + 2 }
+              { placement: `${MEDAL_ICONS[1]} 1º`, value: player['1º Lugar'], fullMark: Math.max(player['1º Lugar'], player['2º Lugar'], player['3º Lugar'], player['4º Lugar']) + 2 },
+              { placement: `${MEDAL_ICONS[2]} 2º`, value: player['2º Lugar'], fullMark: Math.max(player['1º Lugar'], player['2º Lugar'], player['3º Lugar'], player['4º Lugar']) + 2 },
+              { placement: `${MEDAL_ICONS[3]} 3º`, value: player['3º Lugar'], fullMark: Math.max(player['1º Lugar'], player['2º Lugar'], player['3º Lugar'], player['4º Lugar']) + 2 },
+              { placement: `${MEDAL_ICONS[4]} 4º`, value: player['4º Lugar'], fullMark: Math.max(player['1º Lugar'], player['2º Lugar'], player['3º Lugar'], player['4º Lugar']) + 2 }
             ]
             const total = player['1º Lugar'] + player['2º Lugar'] + player['3º Lugar'] + player['4º Lugar']
             
@@ -115,10 +116,10 @@ export function PlacementChart({ data, colors }: PlacementChartProps) {
                     Total: {total} TOP{total !== 1 ? 'S' : ''}
                   </p>
                   <div className="flex justify-center gap-1 mt-1 text-xs">
-                    {player['1º Lugar'] > 0 && <span>🥇{player['1º Lugar']}</span>}
-                    {player['2º Lugar'] > 0 && <span>🥈{player['2º Lugar']}</span>}
-                    {player['3º Lugar'] > 0 && <span>🥉{player['3º Lugar']}</span>}
-                    {player['4º Lugar'] > 0 && <span>4️⃣{player['4º Lugar']}</span>}
+                    {player['1º Lugar'] > 0 && <span>{MEDAL_ICONS[1]}{player['1º Lugar']}</span>}
+                    {player['2º Lugar'] > 0 && <span>{MEDAL_ICONS[2]}{player['2º Lugar']}</span>}
+                    {player['3º Lugar'] > 0 && <span>{MEDAL_ICONS[3]}{player['3º Lugar']}</span>}
+                    {player['4º Lugar'] > 0 && <span>{MEDAL_ICONS[4]}{player['4º Lugar']}</span>}
                   </div>
                 </div>
               </div>

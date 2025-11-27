@@ -14,6 +14,8 @@ import { Trophy, LogOut, Plus, Edit, Trash2, Upload, AlertTriangle } from 'lucid
 import { createClient } from '@/lib/supabase/client'
 import { useAuth, useUserRole } from '@/lib/hooks/use-auth'
 import { toast } from 'sonner'
+import { formatDate } from '@/lib/utils'
+import { MEDAL_ICONS } from '@/lib/constants'
 import { 
   createPlayer, 
   updatePlayer, 
@@ -664,7 +666,7 @@ export default function AdminDashboard() {
                     <h3 className="text-sm font-semibold mb-3">Classificação Final</h3>
                     <div className="space-y-3">
                       <div className="space-y-2">
-                        <Label htmlFor="firstPlace">🥇 1º Lugar</Label>
+                        <Label htmlFor="firstPlace">{MEDAL_ICONS[1]} 1º Lugar</Label>
                         <Select value={firstPlace} onValueChange={setFirstPlace}>
                           <SelectTrigger id="firstPlace">
                             <SelectValue placeholder="Selecione o jogador" />
@@ -680,7 +682,7 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="secondPlace">🥈 2º Lugar</Label>
+                        <Label htmlFor="secondPlace">{MEDAL_ICONS[2]} 2º Lugar</Label>
                         <Select value={secondPlace} onValueChange={setSecondPlace}>
                           <SelectTrigger id="secondPlace">
                             <SelectValue placeholder="Selecione o jogador" />
@@ -696,7 +698,7 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="thirdPlace">🥉 3º Lugar</Label>
+                        <Label htmlFor="thirdPlace">{MEDAL_ICONS[3]} 3º Lugar</Label>
                         <Select value={thirdPlace} onValueChange={setThirdPlace}>
                           <SelectTrigger id="thirdPlace">
                             <SelectValue placeholder="Selecione o jogador" />
@@ -712,7 +714,7 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="fourthPlace">4️⃣ 4º Lugar</Label>
+                        <Label htmlFor="fourthPlace">{MEDAL_ICONS[4]} 4º Lugar</Label>
                         <Select value={fourthPlace} onValueChange={setFourthPlace}>
                           <SelectTrigger id="fourthPlace">
                             <SelectValue placeholder="Selecione o jogador" />
@@ -789,7 +791,7 @@ export default function AdminDashboard() {
                         <div className="flex-1">
                           <CardTitle>{tournament.name}</CardTitle>
                           <CardDescription>
-                            {new Date(tournament.date).toLocaleDateString('pt-BR')} • {tournament.player_count} jogadores
+                            {formatDate(tournament.date)} • {tournament.player_count} jogadores
                             {tournament.location && ` • ${tournament.location}`}
                           </CardDescription>
                         </div>
@@ -818,13 +820,12 @@ export default function AdminDashboard() {
                           <h4 className="text-sm font-semibold mb-3 text-gray-700">Classificação Final</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {topResults.map((result: any) => {
-                              const medals = ['🥇', '🥈', '🥉', '4️⃣']
                               return (
                                 <div
                                   key={result.placement}
                                   className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                                 >
-                                  <span className="text-2xl">{medals[result.placement - 1]}</span>
+                                  <span className="text-2xl">{MEDAL_ICONS[result.placement as 1 | 2 | 3 | 4]}</span>
                                   <div className="flex items-center gap-2 flex-1">
                                     {result.player?.image_url ? (
                                       <div className="relative h-8 w-8 rounded-full overflow-hidden">

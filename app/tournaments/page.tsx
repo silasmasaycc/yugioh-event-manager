@@ -3,7 +3,7 @@ import { MapPin, Users, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
 import { PageLayout } from '@/components/layout/page-layout'
-import { TOP_POSITIONS, MEDAL_EMOJIS } from '@/lib/constants'
+import { TOP_POSITIONS, MEDAL_ICONS } from '@/lib/constants'
 import { ERROR_MESSAGES, LABELS } from '@/lib/constants/messages'
 import { PlayerAvatar } from '@/components/player/player-avatar'
 import { logger } from '@/lib/utils/logger'
@@ -84,7 +84,7 @@ export default async function TournamentsPage() {
                       <h4 className="text-sm font-semibold mb-3 text-gray-700">Classificação Final</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {topResults.map((result: any) => {
-                          const medal = MEDAL_EMOJIS[result.placement as keyof typeof MEDAL_EMOJIS] || '🏆'
+                          const medal = MEDAL_ICONS[result.placement as 1 | 2 | 3 | 4] || '🏆'
                           
                           return (
                             <div

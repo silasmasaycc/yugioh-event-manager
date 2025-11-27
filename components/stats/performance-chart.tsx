@@ -47,8 +47,8 @@ export function PerformanceChart({ data, colors }: PerformanceChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>📊 Melhor Taxa de Desempenho</CardTitle>
-          <p className="text-sm text-muted-foreground">Percentual de TOPs em relação às participações (mínimo 2 torneios e 1 TOP)</p>
+          <CardTitle>📊 Taxa de Desempenho</CardTitle>
+          <p className="text-sm text-muted-foreground">Percentual de TOPs em relação às participações (mínimo 1 TOP)</p>
         </CardHeader>
         <CardContent>
           <p className="text-center text-gray-500 py-8">Nenhum dado disponível para o período selecionado</p>
@@ -60,8 +60,8 @@ export function PerformanceChart({ data, colors }: PerformanceChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>📊 Melhor Taxa de Desempenho</CardTitle>
-        <p className="text-sm text-muted-foreground">Percentual de TOPs em relação às participações (mínimo 2 torneios e 1 TOP)</p>
+        <CardTitle>📊 Taxa de Desempenho</CardTitle>
+        <p className="text-sm text-muted-foreground">Percentual de TOPs em relação às participações (mínimo 1 TOP)</p>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>

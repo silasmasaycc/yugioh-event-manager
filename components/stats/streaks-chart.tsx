@@ -39,7 +39,7 @@ export function StreaksChart({ tournaments, results, topPlayers, colors }: Strea
     if (!tournaments || !results || tournaments.length === 0) return []
 
     const sortedTournaments = [...tournaments].sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
+      new Date(a.date + 'T00:00:00').getTime() - new Date(b.date + 'T00:00:00').getTime()
     )
 
     return topPlayers.map(playerName => {

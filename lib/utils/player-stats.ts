@@ -64,42 +64,83 @@ export function calculatePlayerStats(
 }
 
 /**
- * Ordena jogadores por performance usando critérios hierárquicos
+ * Calcula pontuação total de um jogador baseado em suas colocações
  * 
- * Ordem de prioridade:
- * 1. Número de 1º lugares
- * 2. Número de 2º lugares
- * 3. Número de 3º lugares
- * 4. Número de 4º lugares
- * 5. Total de TOPs
- * 6. Porcentagem de aproveitamento
+ * Sistema de pontos equilibrado:
+ * - 1º lugar: 4 pontos (vitória valorizada)
+ * - 2º lugar: 3 pontos (vice importante)
+ * - 3º lugar: 2 pontos (pódio)
+ * - 4º lugar: 2 pontos (TOP 4)
+ * 
+ * Exemplos de comparação:
+ * - 1 primeiro (4pts) vs 2 segundos (6pts) → consistência ganha
+ * - 1 primeiro (4pts) = 2 terceiros (4pts) → empate, decide por total de TOPs
+ * - 2 primeiros (8pts) vs 3 segundos (9pts) → volume vence
+ * 
+ * @param player - Estatísticas do jogador
+ * @returns Pontuação total calculada
+ */
+export function calculatePlayerScore(player: PlayerStats): number {
+  const POINTS = {
+    first: 4,    // Campeão
+    second: 3,   // Vice-campeão
+    third: 2,    // Terceiro e quarto lugar
+    fourth: 2    // Terceiro e quarto lugar
+  }
+
+  return (
+    player.firstPlace * POINTS.first +
+    player.secondPlace * POINTS.second +
+    player.thirdPlace * POINTS.third +
+    player.fourthPlace * POINTS.fourth
+  )
+}
+
+/**
+ * Ordena jogadores por performance usando critérios de desempate equilibrados
+ * 
+ * Critérios aplicados em ordem:
+ * 1. Sistema de Pontos (1º=4pts, 2º=3pts, 3º/4º=2pts)
+ * 2. Quantidade de TOPs (colocações de destaque)
+ * 3. Porcentagem de desempenho do jogador
+ * 4. Número de participações (para jogadores sem TOPs)
+ * 5. Nome (ordem alfabética - desempate final)
+ * 
+ * Para jogadores SEM TOPs:
+ * - São ordenados por número de participações (maior = mais dedicado)
+ * - Em caso de empate, ordem alfabética
  * 
  * @param playerA - Primeiro jogador para comparação
  * @param playerB - Segundo jogador para comparação
  * @returns Número negativo se A > B, positivo se B > A, 0 se iguais
  */
 export function sortPlayersByPerformance(playerA: PlayerStats, playerB: PlayerStats): number {
-  if (playerB.firstPlace !== playerA.firstPlace) {
-    return playerB.firstPlace - playerA.firstPlace
-  }
+  // Critério 1: Sistema de Pontos
+  const scoreA = calculatePlayerScore(playerA)
+  const scoreB = calculatePlayerScore(playerB)
   
-  if (playerB.secondPlace !== playerA.secondPlace) {
-    return playerB.secondPlace - playerA.secondPlace
+  if (scoreB !== scoreA) {
+    return scoreB - scoreA
   }
-  
-  if (playerB.thirdPlace !== playerA.thirdPlace) {
-    return playerB.thirdPlace - playerA.thirdPlace
-  }
-  
-  if (playerB.fourthPlace !== playerA.fourthPlace) {
-    return playerB.fourthPlace - playerA.fourthPlace
-  }
-  
+
+  // Critério 2: Quantidade de TOPs (colocações de destaque)
   if (playerB.totalTops !== playerA.totalTops) {
     return playerB.totalTops - playerA.totalTops
   }
   
-  return playerB.topPercentage - playerA.topPercentage
+  // Critério 3: Porcentagem de desempenho (maior % = melhor)
+  if (playerA.topPercentage !== playerB.topPercentage) {
+    return playerB.topPercentage - playerA.topPercentage
+  }
+
+  // Critério 4: Número de participações (para jogadores sem TOPs ou empate)
+  // Jogadores com mais participações mostram mais dedicação
+  if (playerB.totalTournaments !== playerA.totalTournaments) {
+    return playerB.totalTournaments - playerA.totalTournaments
+  }
+
+  // Critério 5: Ordem alfabética (desempate final)
+  return playerA.name.localeCompare(playerB.name)
 }
 
 /**

@@ -32,21 +32,31 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
 
   // Calcular taxa de melhoria
   const improvementData = useMemo(() => {
-    if (!tournaments || !results || tournaments.length < 4) return []
+    if (!tournaments || !results || tournaments.length < 3) return []
 
     const sortedTournaments = [...tournaments].sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
+      new Date(a.date + 'T00:00:00').getTime() - new Date(b.date + 'T00:00:00').getTime()
     )
 
-    // Dividir em dois períodos: primeiros 40% vs últimos 40%
-    const totalTournaments = sortedTournaments.length
-    const periodSize = Math.max(2, Math.floor(totalTournaments * 0.4))
-    
-    const initialPeriod = sortedTournaments.slice(0, periodSize)
-    const recentPeriod = sortedTournaments.slice(-periodSize)
-
     return topPlayers.map(playerName => {
-      // Calcular performance no período inicial
+      // Filtrar apenas torneios que o jogador participou
+      const playerTournaments = sortedTournaments.filter(tournament =>
+        results.some(r => r.tournamentId === tournament.id && r.playerName === playerName)
+      )
+
+      // Verificar se o jogador tem pelo menos 3 participações
+      if (playerTournaments.length < 3) {
+        return null
+      }
+
+      // Dividir torneios do jogador em dois períodos: primeiros 40% vs últimos 40%
+      const totalTournaments = playerTournaments.length
+      const periodSize = Math.max(1, Math.floor(totalTournaments * 0.4))
+      
+      const initialPeriod = playerTournaments.slice(0, periodSize)
+      const recentPeriod = playerTournaments.slice(-periodSize)
+
+      // Calcular performance no período inicial (apenas torneios do jogador)
       const initialResults = results.filter(r => 
         initialPeriod.some(t => t.id === r.tournamentId) && 
         r.playerName === playerName
@@ -57,7 +67,7 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
         ? (initialTops / initialParticipations) * 100 
         : 0
 
-      // Calcular performance no período recente
+      // Calcular performance no período recente (apenas torneios do jogador)
       const recentResults = results.filter(r => 
         recentPeriod.some(t => t.id === r.tournamentId) && 
         r.playerName === playerName
@@ -85,10 +95,13 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
         trend,
         // Dados adicionais para tooltip
         initialData: { tops: initialTops, participations: initialParticipations },
-        recentData: { tops: recentTops, participations: recentParticipations }
+        recentData: { tops: recentTops, participations: recentParticipations },
+        totalParticipations: playerTournaments.length
       }
     })
-    .filter(data => data.initialData.participations > 0 || data.recentData.participations > 0)
+    .filter((data): data is NonNullable<typeof data> => 
+      data !== null && data.improvement !== 0 // Remover jogadores sem mudança (0%)
+    )
     .sort((a, b) => b.improvement - a.improvement)
   }, [tournaments, results, topPlayers])
 
@@ -123,7 +136,9 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
           <p className="text-sm text-muted-foreground">Evolução do desempenho: período inicial vs período recente</p>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-gray-500 py-8">Dados insuficientes (mínimo 4 torneios)</p>
+          <p className="text-center text-gray-500 py-8">
+            Dados insuficientes. Cada jogador precisa ter participado de pelo menos 3 torneios com variação de desempenho.
+          </p>
         </CardContent>
       </Card>
     )
@@ -159,12 +174,16 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
                 if (active && payload && payload.length) {
                   const data = payload[0].payload as ImprovementData & { 
                     initialData: { tops: number, participations: number },
-                    recentData: { tops: number, participations: number }
+                    recentData: { tops: number, participations: number },
+                    totalParticipations: number
                   }
                   
                   return (
                     <div className="bg-white p-4 border rounded shadow-lg">
-                      <p className="font-semibold text-sm mb-3">{data.name}</p>
+                      <p className="font-semibold text-sm mb-1">{data.name}</p>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Total: {data.totalParticipations} torneio{data.totalParticipations !== 1 ? 's' : ''}
+                      </p>
                       
                       <div className="space-y-3">
                         {/* Período Inicial */}

@@ -34,7 +34,15 @@ export default async function PlayersPage() {
   // Calcular estatísticas para cada jogador usando a função utilitária
   const playersWithStats = players?.map(player => 
     calculatePlayerStats(player, player.penalties || [])
-  ).sort((a, b) => b.totalTops - a.totalTops) // Ordenar por número de TOPs
+  ).sort((a, b) => {
+    // Ordenar pelo mesmo critério do ranking: Pontos → TOPs → Percentual
+    const pointsA = (a.firstPlace * 4) + (a.secondPlace * 3) + (a.thirdPlace * 2) + (a.fourthPlace * 2)
+    const pointsB = (b.firstPlace * 4) + (b.secondPlace * 3) + (b.thirdPlace * 2) + (b.fourthPlace * 2)
+    
+    if (pointsB !== pointsA) return pointsB - pointsA
+    if (b.totalTops !== a.totalTops) return b.totalTops - a.totalTops
+    return b.topPercentage - a.topPercentage
+  })
 
   return (
     <PageLayout activeRoute="/players">

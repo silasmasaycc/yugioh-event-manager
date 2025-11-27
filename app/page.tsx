@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Trophy, Users, BarChart3, Calendar, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/header'
+import { formatDateLong } from '@/lib/utils'
+import { MEDAL_ICONS } from '@/lib/constants'
 
 export const revalidate = 3600 // 1 hora
 
@@ -35,14 +37,6 @@ export default async function HomePage() {
       .order('date', { ascending: false })
       .limit(5)
   ])
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    })
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -121,7 +115,7 @@ export default async function HomePage() {
                     <CardDescription className="flex flex-col gap-2 mt-2">
                       <span className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        {formatDate(tournament.date)}
+                        {formatDateLong(tournament.date)}
                       </span>
                       <span className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
@@ -141,13 +135,7 @@ export default async function HomePage() {
                       <h4 className="text-sm font-semibold mb-3 text-gray-700">Classificação Final</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {topResults.map((result: any) => {
-                          const medals: { [key: number]: string } = {
-                            1: '🥇',
-                            2: '🥈',
-                            3: '🥉',
-                            4: '4️⃣'
-                          }
-                          const medal = medals[result.placement] || '🏆'
+                          const medal = MEDAL_ICONS[result.placement as 1 | 2 | 3 | 4] || '🏆'
                           
                           return (
                             <div

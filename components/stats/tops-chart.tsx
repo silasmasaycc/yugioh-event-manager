@@ -3,6 +3,7 @@
 import { useMemo, useCallback, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { formatDateShort } from '@/lib/utils'
 
 interface TournamentResult {
   date: string
@@ -15,58 +16,78 @@ interface TournamentResult {
 interface PlayerTrendData {
   name: string
   color: string
-  data: { date: string; tops: number; total: number }[]
+  data: { date: string; points: number; total: number }[]
 }
 
-interface TopsEvolutionChartProps {
+interface PointsEvolutionChartProps {
   tournaments: { id: number; date: string }[]
   results: TournamentResult[]
   topPlayers: string[]
   colors: string[]
 }
 
-export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }: TopsEvolutionChartProps) {
+// Função para calcular pontos por colocação
+const getPointsByPlacement = (placement: number | null): number => {
+  if (placement === null) return 0
+  if (placement === 1) return 4
+  if (placement === 2) return 3
+  if (placement === 3 || placement === 4) return 2
+  return 0
+}
+
+export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }: PointsEvolutionChartProps) {
   const [hiddenPlayers, setHiddenPlayers] = useState<Set<string>>(new Set())
 
-  // Processar dados para evolução temporal
+  // Processar dados para evolução temporal de pontos (últimos 30 dias)
   const evolutionData = useMemo(() => {
     if (!tournaments || !results || tournaments.length === 0) return []
 
-    // Ordenar torneios por data
-    const sortedTournaments = [...tournaments].sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    )
+    // Calcular data limite (30 dias atrás)
+    const now = new Date()
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-    // Criar mapa acumulativo de TOPs por jogador
-    const playerTopsMap = new Map<string, number[]>()
+    // Filtrar torneios dos últimos 30 dias
+    const recentTournaments = tournaments
+      .filter(tournament => {
+        const tournamentDate = new Date(tournament.date + 'T00:00:00')
+        return tournamentDate >= thirtyDaysAgo && tournamentDate <= now
+      })
+      .sort((a, b) => 
+        new Date(a.date + 'T00:00:00').getTime() - new Date(b.date + 'T00:00:00').getTime()
+      )
 
-    sortedTournaments.forEach((tournament) => {
+    if (recentTournaments.length === 0) return []
+
+    // Criar mapa acumulativo de pontos por jogador
+    const playerPointsMap = new Map<string, number[]>()
+
+    recentTournaments.forEach((tournament) => {
       const tournamentResults = results.filter(r => r.tournamentId === tournament.id)
       
       topPlayers.forEach(playerName => {
-        if (!playerTopsMap.has(playerName)) {
-          playerTopsMap.set(playerName, [])
+        if (!playerPointsMap.has(playerName)) {
+          playerPointsMap.set(playerName, [])
         }
 
-        const playerData = playerTopsMap.get(playerName)!
-        const previousTops = playerData.length > 0 ? playerData[playerData.length - 1] : 0
+        const playerData = playerPointsMap.get(playerName)!
+        const previousPoints = playerData.length > 0 ? playerData[playerData.length - 1] : 0
         
         const playerResult = tournamentResults.find(r => r.playerName === playerName)
-        const hasTop = playerResult && playerResult.placement !== null && playerResult.placement <= 4
+        const points = getPointsByPlacement(playerResult?.placement ?? null)
         
-        playerData.push(previousTops + (hasTop ? 1 : 0))
+        playerData.push(previousPoints + points)
       })
     })
 
     // Transformar em formato para o gráfico
-    return sortedTournaments.map((tournament, index) => {
+    return recentTournaments.map((tournament, index) => {
       const dataPoint: any = {
-        date: new Date(tournament.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        date: formatDateShort(tournament.date),
         fullDate: tournament.date
       }
 
       topPlayers.forEach(playerName => {
-        const playerData = playerTopsMap.get(playerName)
+        const playerData = playerPointsMap.get(playerName)
         if (playerData && playerData[index] !== undefined) {
           dataPoint[playerName] = playerData[index]
         }
@@ -76,9 +97,20 @@ export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }:
     })
   }, [tournaments, results, topPlayers])
 
+  // Filtrar jogadores com 0 pontos no período
+  const playersWithPoints = useMemo(() => {
+    if (evolutionData.length === 0) return topPlayers
+    
+    const lastDataPoint = evolutionData[evolutionData.length - 1]
+    return topPlayers.filter(playerName => {
+      const finalPoints = lastDataPoint[playerName] || 0
+      return finalPoints > 0
+    })
+  }, [evolutionData, topPlayers])
+
   const filteredPlayers = useMemo(() => 
-    topPlayers.filter(player => !hiddenPlayers.has(player)),
-    [topPlayers, hiddenPlayers]
+    playersWithPoints.filter(player => !hiddenPlayers.has(player)),
+    [playersWithPoints, hiddenPlayers]
   )
 
   const togglePlayer = useCallback((playerName: string) => {
@@ -97,11 +129,11 @@ export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }:
     return (
       <Card>
         <CardHeader>
-          <CardTitle>📈 Evolução dos TOPs ao Longo do Tempo</CardTitle>
-          <p className="text-sm text-muted-foreground">Acompanhe o crescimento acumulado de TOPs dos melhores jogadores</p>
+          <CardTitle>📊 Evolução da Pontuação 📅 (Últimos 30 Dias)</CardTitle>
+          <p className="text-sm text-muted-foreground">Acompanhe o crescimento acumulado de pontos dos melhores jogadores</p>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-gray-500 py-8">Nenhum dado disponível para o período selecionado</p>
+          <p className="text-center text-gray-500 py-8">Nenhum torneio nos últimos 30 dias</p>
         </CardContent>
       </Card>
     )
@@ -110,8 +142,8 @@ export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }:
   return (
     <Card>
       <CardHeader>
-        <CardTitle>📈 Evolução dos TOPs ao Longo do Tempo</CardTitle>
-        <p className="text-sm text-muted-foreground">Acompanhe o crescimento acumulado de TOPs dos melhores jogadores</p>
+        <CardTitle>📊 Evolução da Pontuação 📅 (Últimos 30 Dias)</CardTitle>
+        <p className="text-sm text-muted-foreground">Acompanhe o crescimento acumulado de pontos dos melhores jogadores</p>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
@@ -125,7 +157,7 @@ export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }:
               height={80}
             />
             <YAxis 
-              label={{ value: 'TOPs Acumulados', angle: -90, position: 'insideLeft' }}
+              label={{ value: 'Pontos Acumulados', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip 
               content={({ active, payload, label }) => {
@@ -137,7 +169,7 @@ export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }:
                         .sort((a, b) => (b.value as number) - (a.value as number))
                         .map((entry, index) => (
                           <p key={index} className="text-xs" style={{ color: entry.color }}>
-                            <span className="font-semibold">{entry.name}:</span> {entry.value} TOP{(entry.value as number) !== 1 ? 'S' : ''}
+                            <span className="font-semibold">{entry.name}:</span> {entry.value} ponto{(entry.value as number) !== 1 ? 's' : ''}
                           </p>
                         ))}
                     </div>
@@ -164,13 +196,14 @@ export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }:
 
         {/* Legenda/Botões de toggle */}
         <div className="flex flex-wrap gap-3 justify-center mt-6 pt-4 border-t">
-          {topPlayers.map((playerName, index) => {
+          {playersWithPoints.map((playerName) => {
             const isHidden = hiddenPlayers.has(playerName)
-            const finalTops = evolutionData.length > 0 ? evolutionData[evolutionData.length - 1][playerName] : 0
+            const finalPoints = evolutionData.length > 0 ? evolutionData[evolutionData.length - 1][playerName] : 0
+            const colorIndex = topPlayers.indexOf(playerName)
             
             return (
               <button
-                key={index}
+                key={playerName}
                 onClick={() => togglePlayer(playerName)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out hover:bg-gray-100 ${
                   isHidden ? 'opacity-40' : 'opacity-100'
@@ -178,10 +211,10 @@ export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }:
               >
                 <div 
                   className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: colors[index % colors.length] }}
+                  style={{ backgroundColor: colors[colorIndex % colors.length] }}
                 />
                 <span className="text-sm font-medium">
-                  {playerName}: {finalTops} TOP{finalTops !== 1 ? 'S' : ''}
+                  {playerName}: {finalPoints} ponto{finalPoints !== 1 ? 's' : ''}
                 </span>
               </button>
             )
@@ -191,8 +224,8 @@ export function TopsEvolutionChart({ tournaments, results, topPlayers, colors }:
         {/* Insights */}
         <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-xs text-blue-800">
-            💡 <span className="font-semibold">Dica:</span> Este gráfico mostra o crescimento acumulado de TOPs. 
-            Linhas mais inclinadas indicam períodos de maior sucesso. Linhas planas mostram períodos sem TOPs.
+            💡 <span className="font-semibold">Sistema de Pontos:</span> 1º lugar = 4pts, 2º lugar = 3pts, 3º/4º lugar = 2pts cada. 
+            Linhas mais inclinadas indicam maior acúmulo de pontos no período.
           </p>
         </div>
       </CardContent>

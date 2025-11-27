@@ -10,17 +10,14 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { PerformanceChart, TopsEvolutionChart, PlacementChart, StreaksChart, ImprovementChart } from '@/components/stats'
 import { ERROR_MESSAGES } from '@/lib/constants/messages'
 import { logger } from '@/lib/utils/logger'
+import { generateColors } from '@/lib/utils'
 import { 
   TOP_POSITIONS, 
-  TOP_PLAYERS_LIMIT,
-  MINIMUM_TOURNAMENTS_FOR_RANKING,
   FIRST_PLACE,
   SECOND_PLACE,
   THIRD_PLACE,
   FOURTH_PLACE
 } from '@/lib/constants'
-
-const COLORS = ['#d4af37', '#3b82f6', '#c0c0c0', '#cd7f32', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899']
 
 interface PlayerStats {
   name: string
@@ -122,14 +119,12 @@ export default function StatsPage() {
       // Top jogadores que mais jogaram (para gráfico de participações)
       const topByParticipation = [...allPlayerStats]
         .sort((playerA, playerB) => playerB.participations - playerA.participations)
-        .slice(0, TOP_PLAYERS_LIMIT)
       
       setMostParticipations(topByParticipation)
 
       // Top jogadores com mais TOPs (para gráfico de evolução temporal)
       const topByTops = [...allPlayerStats]
         .sort((playerA, playerB) => playerB.tops - playerA.tops)
-        .slice(0, TOP_PLAYERS_LIMIT)
       
       // Preparar dados para evolução temporal
       const tournamentResults: TournamentResult[] = results.map((result: any) => ({
@@ -146,31 +141,32 @@ export default function StatsPage() {
         topPlayers: topByTops.map(p => p.name)
       })
 
-      // Top jogadores com melhor % de TOPs (mínimo 2 participações e pelo menos 1 TOP)
+      // Top jogadores com melhor % de TOPs (mínimo 1 TOP)
       const topByPercentage = [...allPlayerStats]
-        .filter(player => player.participations >= MINIMUM_TOURNAMENTS_FOR_RANKING && player.tops > 0)
+        .filter(player => player.tops > 0)
         .sort((playerA, playerB) => playerB.topPercentage - playerA.topPercentage)
-        .slice(0, TOP_PLAYERS_LIMIT)
       
       setBestPerformance(topByPercentage)
 
-      // Distribuição de Colocações (Top jogadores com mais TOPs)
+      // Distribuição de Colocações (apenas jogadores com TOPs)
       const placementMap = new Map<number, PlacementDistribution>()
       
-      topByTops.forEach(player => {
-        const playerData = players.find(currentPlayer => currentPlayer.name === player.name)
-        if (playerData) {
-          const playerResults = results.filter((result: any) => result.player?.id === playerData.id)
-          
-          placementMap.set(playerData.id, {
-            name: player.name,
-            '1º Lugar': playerResults.filter((result: any) => result.placement === FIRST_PLACE).length,
-            '2º Lugar': playerResults.filter((result: any) => result.placement === SECOND_PLACE).length,
-            '3º Lugar': playerResults.filter((result: any) => result.placement === THIRD_PLACE).length,
-            '4º Lugar': playerResults.filter((result: any) => result.placement === FOURTH_PLACE).length,
-          })
-        }
-      })
+      topByTops
+        .filter(player => player.tops > 0) // Filtrar apenas jogadores com TOPs
+        .forEach(player => {
+          const playerData = players.find(currentPlayer => currentPlayer.name === player.name)
+          if (playerData) {
+            const playerResults = results.filter((result: any) => result.player?.id === playerData.id)
+            
+            placementMap.set(playerData.id, {
+              name: player.name,
+              '1º Lugar': playerResults.filter((result: any) => result.placement === FIRST_PLACE).length,
+              '2º Lugar': playerResults.filter((result: any) => result.placement === SECOND_PLACE).length,
+              '3º Lugar': playerResults.filter((result: any) => result.placement === THIRD_PLACE).length,
+              '4º Lugar': playerResults.filter((result: any) => result.placement === FOURTH_PLACE).length,
+            })
+          }
+        })
 
       setPlacementDistribution(Array.from(placementMap.values()))
 
@@ -250,26 +246,32 @@ export default function StatsPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          <PerformanceChart data={bestPerformance} colors={COLORS} />
           <StreaksChart 
             tournaments={topsEvolutionData.tournaments}
             results={topsEvolutionData.results}
             topPlayers={topsEvolutionData.topPlayers}
-            colors={COLORS}
+            colors={generateColors(topsEvolutionData.topPlayers)}
           />
           <ImprovementChart 
             tournaments={topsEvolutionData.tournaments}
             results={topsEvolutionData.results}
             topPlayers={topsEvolutionData.topPlayers}
-            colors={COLORS}
+            colors={generateColors(topsEvolutionData.topPlayers)}
           />
           <TopsEvolutionChart 
             tournaments={topsEvolutionData.tournaments}
             results={topsEvolutionData.results}
             topPlayers={topsEvolutionData.topPlayers}
-            colors={COLORS}
+            colors={generateColors(topsEvolutionData.topPlayers)}
           />
-          <PlacementChart data={placementDistribution} colors={COLORS} />
+          <PerformanceChart 
+            data={bestPerformance} 
+            colors={generateColors(bestPerformance.map(p => p.name))} 
+          />
+          <PlacementChart 
+            data={placementDistribution} 
+            colors={generateColors(placementDistribution.map(p => p.name))} 
+          />
         </div>
       )}
     </PageLayout>

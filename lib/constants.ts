@@ -24,10 +24,18 @@ export const MEDAL_COLORS = {
   4: 'text-gray-300'
 } as const
 
-// Emojis de Medalhas
-export const MEDAL_EMOJIS = {
-  1: '🥇',
-  2: '🥈',
-  3: '🥉',
-  4: '4️⃣'
+// Ícones de Medalhas (padrão do projeto)
+export const MEDAL_ICONS = {
+  1: '🏆',
+  2: '🌟',
+  3: '🔶',
+  4: '🔷'
+} as const
+
+// Sistema de Pontuação
+export const PLACEMENT_POINTS = {
+  1: 4,
+  2: 3,
+  3: 2,
+  4: 2
 } as const
