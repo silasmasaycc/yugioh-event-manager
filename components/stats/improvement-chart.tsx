@@ -3,6 +3,7 @@
 import { useMemo, useCallback, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
+import { FilterBadge } from './filter-badge'
 
 interface TournamentResult {
   date: string
@@ -25,9 +26,12 @@ interface ImprovementChartProps {
   results: TournamentResult[]
   topPlayers: string[]
   colors: string[]
+  isFiltered?: boolean
+  filteredCount?: number
+  totalCount?: number
 }
 
-export function ImprovementChart({ tournaments, results, topPlayers, colors }: ImprovementChartProps) {
+export function ImprovementChart({ tournaments, results, topPlayers, colors, isFiltered = false, filteredCount, totalCount }: ImprovementChartProps) {
   const [hiddenPlayers, setHiddenPlayers] = useState<Set<string>>(new Set())
 
   // Calcular taxa de melhoria
@@ -44,17 +48,27 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
         results.some(r => r.tournamentId === tournament.id && r.playerName === playerName)
       )
 
-      // Verificar se o jogador tem pelo menos 3 participações
-      if (playerTournaments.length < 3) {
+      // Verificar se o jogador tem pelo menos 2 participações
+      if (playerTournaments.length < 2) {
         return null
       }
 
-      // Dividir torneios do jogador em dois períodos: primeiros 40% vs últimos 40%
+      // Dividir torneios do jogador em dois períodos
       const totalTournaments = playerTournaments.length
-      const periodSize = Math.max(1, Math.floor(totalTournaments * 0.4))
       
-      const initialPeriod = playerTournaments.slice(0, periodSize)
-      const recentPeriod = playerTournaments.slice(-periodSize)
+      // Calcular tamanho dos períodos
+      // Para números ímpares, o período recente terá 1 torneio a mais
+      // Exemplos:
+      // 2 torneios: inicial=1, recente=1
+      // 3 torneios: inicial=1, recente=2
+      // 5 torneios: inicial=2, recente=3
+      // 7 torneios: inicial=3, recente=4
+      // 8 torneios: inicial=4, recente=4
+      const initialPeriodSize = Math.floor(totalTournaments / 2)
+      const recentPeriodSize = Math.ceil(totalTournaments / 2)
+      
+      const initialPeriod = playerTournaments.slice(0, initialPeriodSize)
+      const recentPeriod = playerTournaments.slice(-recentPeriodSize)
 
       // Calcular performance no período inicial (apenas torneios do jogador)
       const initialResults = results.filter(r => 
@@ -100,7 +114,7 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
       }
     })
     .filter((data): data is NonNullable<typeof data> => 
-      data !== null && data.improvement !== 0 // Remover jogadores sem mudança (0%)
+      data !== null // Incluir todos os jogadores com dados válidos
     )
     .sort((a, b) => b.improvement - a.improvement)
   }, [tournaments, results, topPlayers])
@@ -132,12 +146,12 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
     return (
       <Card>
         <CardHeader>
-          <CardTitle>📈 Taxa de Melhoria</CardTitle>
+          <CardTitle>{isFiltered && '🔍 '}📈 Taxa de Melhoria</CardTitle>
           <p className="text-sm text-muted-foreground">Evolução do desempenho: período inicial vs período recente</p>
         </CardHeader>
         <CardContent>
           <p className="text-center text-gray-500 py-8">
-            Dados insuficientes. Cada jogador precisa ter participado de pelo menos 3 torneios com variação de desempenho.
+            Dados insuficientes. Cada jogador precisa ter participado de pelo menos 2 torneios.
           </p>
         </CardContent>
       </Card>
@@ -147,8 +161,15 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
   return (
     <Card>
       <CardHeader>
-        <CardTitle>📈 Taxa de Melhoria</CardTitle>
-        <p className="text-sm text-muted-foreground">Evolução do desempenho: período inicial vs período recente</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>📈 Taxa de Melhoria</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Compara a primeira metade dos torneios com a segunda metade (mínimo: 2 torneios)
+            </p>
+          </div>
+          <FilterBadge isFiltered={isFiltered} filteredCount={filteredCount} totalCount={totalCount} />
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
@@ -310,8 +331,9 @@ export function ImprovementChart({ tournaments, results, topPlayers, colors }: I
         {/* Insights */}
         <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
           <p className="text-xs text-green-800">
-            📈 <span className="font-semibold">Melhoria:</span> Compara os primeiros 40% dos torneios com os últimos 40%. 
-            Valores positivos indicam evolução no desempenho!
+            📈 <span className="font-semibold">Como funciona:</span> O gráfico divide os torneios de cada jogador em duas metades (primeira metade vs segunda metade) 
+            e compara a taxa de TOPs entre elas. Valores positivos (+) indicam que o jogador melhorou seu desempenho ao longo do tempo. 
+            Valores negativos (-) indicam queda de performance. Requer mínimo de 2 torneios por jogador.
           </p>
         </div>
       </CardContent>

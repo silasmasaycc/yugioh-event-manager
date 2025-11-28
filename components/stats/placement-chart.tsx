@@ -4,6 +4,7 @@ import { useMemo, useCallback, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { MEDAL_ICONS } from '@/lib/constants'
+import { FilterBadge } from './filter-badge'
 
 interface PlacementDistribution {
   name: string
@@ -16,9 +17,12 @@ interface PlacementDistribution {
 interface PlacementChartProps {
   data: PlacementDistribution[]
   colors: string[]
+  isFiltered?: boolean
+  filteredCount?: number
+  totalCount?: number
 }
 
-export function PlacementChart({ data, colors }: PlacementChartProps) {
+export function PlacementChart({ data, colors, isFiltered = false, filteredCount, totalCount }: PlacementChartProps) {
   const [hiddenPlayers, setHiddenPlayers] = useState<Set<string>>(new Set())
 
   const filteredData = useMemo(() =>
@@ -42,7 +46,7 @@ export function PlacementChart({ data, colors }: PlacementChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>🎯 Distribuição de Colocações</CardTitle>
+          <CardTitle>{isFiltered && '🔍 '}🎯 Distribuição de Colocações</CardTitle>
           <p className="text-sm text-muted-foreground">Perfil de colocações de cada jogador (análise radar)</p>
         </CardHeader>
         <CardContent>
@@ -55,8 +59,13 @@ export function PlacementChart({ data, colors }: PlacementChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>🎯 Distribuição de Colocações</CardTitle>
-        <p className="text-sm text-muted-foreground">Perfil de colocações de cada jogador (análise radar)</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>🎯 Distribuição de Colocações</CardTitle>
+            <p className="text-sm text-muted-foreground">Perfil de colocações de cada jogador (análise radar)</p>
+          </div>
+          <FilterBadge isFiltered={isFiltered} filteredCount={filteredCount} totalCount={totalCount} />
+        </div>
       </CardHeader>
       <CardContent>
         {/* Grid de Radares Individuais */}

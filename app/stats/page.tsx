@@ -10,7 +10,7 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { PerformanceChart, TopsEvolutionChart, PlacementChart, StreaksChart, ImprovementChart } from '@/components/stats'
 import { ERROR_MESSAGES } from '@/lib/constants/messages'
 import { logger } from '@/lib/utils/logger'
-import { generateColors } from '@/lib/utils'
+import { generateColors, formatDateLong } from '@/lib/utils'
 import { 
   TOP_POSITIONS, 
   FIRST_PLACE,
@@ -45,24 +45,35 @@ interface TournamentResult {
 export default function StatsPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [appliedStartDate, setAppliedStartDate] = useState('')
+  const [appliedEndDate, setAppliedEndDate] = useState('')
   const [loading, setLoading] = useState(true)
   const [mostParticipations, setMostParticipations] = useState<PlayerStats[]>([])
   const [topsEvolutionData, setTopsEvolutionData] = useState<{ tournaments: any[], results: TournamentResult[], topPlayers: string[] }>({ tournaments: [], results: [], topPlayers: [] })
   const [bestPerformance, setBestPerformance] = useState<PlayerStats[]>([])
   const [placementDistribution, setPlacementDistribution] = useState<PlacementDistribution[]>([])
+  const [totalTournaments, setTotalTournaments] = useState(0)
+  const [filteredTournaments, setFilteredTournaments] = useState(0)
 
   const supabase = createClient()
 
   const loadStats = useCallback(async () => {
     setLoading(true)
     try {
+      // Buscar total de torneios (sem filtro)
+      const { count: total } = await supabase
+        .from('tournaments')
+        .select('*', { count: 'exact', head: true })
+      
+      setTotalTournaments(total || 0)
+
       let tournamentQuery = supabase.from('tournaments').select('id, date')
       
-      if (startDate) {
-        tournamentQuery = tournamentQuery.gte('date', startDate)
+      if (appliedStartDate) {
+        tournamentQuery = tournamentQuery.gte('date', appliedStartDate)
       }
-      if (endDate) {
-        tournamentQuery = tournamentQuery.lte('date', endDate)
+      if (appliedEndDate) {
+        tournamentQuery = tournamentQuery.lte('date', appliedEndDate)
       }
 
       const { data: tournaments } = await tournamentQuery
@@ -72,9 +83,12 @@ export default function StatsPage() {
         setTopsEvolutionData({ tournaments: [], results: [], topPlayers: [] })
         setBestPerformance([])
         setPlacementDistribution([])
+        setFilteredTournaments(0)
         setLoading(false)
         return
       }
+
+      setFilteredTournaments(tournaments.length)
 
       const tournamentIds = tournaments.map(t => t.id)
 
@@ -174,21 +188,25 @@ export default function StatsPage() {
       logger.error(ERROR_MESSAGES.LOAD_STATS_ERROR, error)
     }
     setLoading(false)
-  }, [supabase, startDate, endDate])
+  }, [supabase, appliedStartDate, appliedEndDate])
 
   useEffect(() => {
     loadStats()
   }, [loadStats])
 
   const handleFilter = () => {
-    loadStats()
+    setAppliedStartDate(startDate)
+    setAppliedEndDate(endDate)
   }
 
   const handleClearFilter = () => {
     setStartDate('')
     setEndDate('')
-    setTimeout(() => loadStats(), 0)
+    setAppliedStartDate('')
+    setAppliedEndDate('')
   }
+
+  const isFiltered = appliedStartDate !== '' || appliedEndDate !== ''
 
   return (
     <PageLayout activeRoute="/stats">
@@ -232,11 +250,41 @@ export default function StatsPage() {
               <Button onClick={handleFilter} className="flex-1">
                 Aplicar Filtro
               </Button>
-              <Button onClick={handleClearFilter} variant="outline">
+              <Button 
+                onClick={handleClearFilter} 
+                variant="outline"
+                className={isFiltered ? 'border-orange-500 text-orange-600 hover:bg-orange-50' : ''}
+              >
                 Limpar
               </Button>
             </div>
           </div>
+          
+          {/* Badge de status do filtro */}
+          {!loading && (
+            <div className="mt-4 flex items-center justify-center gap-3">
+              {isFiltered ? (
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                  <span className="text-xl">🔍</span>
+                  <div className="text-sm">
+                    <span className="font-semibold text-blue-800">
+                      Período: {appliedStartDate ? formatDateLong(appliedStartDate) : '...'} → {appliedEndDate ? formatDateLong(appliedEndDate) : '...'}
+                    </span>
+                    <span className="text-blue-600 ml-2">
+                      ({filteredTournaments} {filteredTournaments === 1 ? 'torneio' : 'torneios'} de {totalTournaments} total)
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                  <span className="text-xl">📊</span>
+                  <span className="text-sm font-semibold text-gray-700">
+                    Mostrando todos os torneios ({totalTournaments} {totalTournaments === 1 ? 'torneio' : 'torneios'})
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -251,26 +299,41 @@ export default function StatsPage() {
             results={topsEvolutionData.results}
             topPlayers={topsEvolutionData.topPlayers}
             colors={generateColors(topsEvolutionData.topPlayers)}
+            isFiltered={isFiltered}
+            filteredCount={filteredTournaments}
+            totalCount={totalTournaments}
           />
           <ImprovementChart 
             tournaments={topsEvolutionData.tournaments}
             results={topsEvolutionData.results}
             topPlayers={topsEvolutionData.topPlayers}
             colors={generateColors(topsEvolutionData.topPlayers)}
+            isFiltered={isFiltered}
+            filteredCount={filteredTournaments}
+            totalCount={totalTournaments}
           />
           <TopsEvolutionChart 
             tournaments={topsEvolutionData.tournaments}
             results={topsEvolutionData.results}
             topPlayers={topsEvolutionData.topPlayers}
             colors={generateColors(topsEvolutionData.topPlayers)}
+            isFiltered={isFiltered}
+            filteredCount={filteredTournaments}
+            totalCount={totalTournaments}
           />
           <PerformanceChart 
             data={bestPerformance} 
             colors={generateColors(bestPerformance.map(p => p.name))} 
+            isFiltered={isFiltered}
+            filteredCount={filteredTournaments}
+            totalCount={totalTournaments}
           />
           <PlacementChart 
             data={placementDistribution} 
             colors={generateColors(placementDistribution.map(p => p.name))} 
+            isFiltered={isFiltered}
+            filteredCount={filteredTournaments}
+            totalCount={totalTournaments}
           />
         </div>
       )}

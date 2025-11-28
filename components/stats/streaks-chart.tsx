@@ -3,6 +3,7 @@
 import { useMemo, useCallback, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ZAxis } from 'recharts'
+import { FilterBadge } from './filter-badge'
 
 interface TournamentResult {
   date: string
@@ -29,9 +30,12 @@ interface StreaksChartProps {
   results: TournamentResult[]
   topPlayers: string[]
   colors: string[]
+  isFiltered?: boolean
+  filteredCount?: number
+  totalCount?: number
 }
 
-export function StreaksChart({ tournaments, results, topPlayers, colors }: StreaksChartProps) {
+export function StreaksChart({ tournaments, results, topPlayers, colors, isFiltered = false, filteredCount, totalCount }: StreaksChartProps) {
   const [hiddenPlayers, setHiddenPlayers] = useState<Set<string>>(new Set())
 
   // Calcular streaks para cada jogador
@@ -159,12 +163,21 @@ export function StreaksChart({ tournaments, results, topPlayers, colors }: Strea
     })
   }, [])
 
-  // Função para calcular cor baseada na seca (azul claro = pouca seca, azul escuro = muita seca)
-  const getDroughtColor = useCallback((drought: number) => {
-    if (drought === 0) return '#bfdbfe' // blue-200 (sem seca)
-    if (drought <= 2) return '#93c5fd' // blue-300 (seca leve)
-    if (drought <= 4) return '#60a5fa' // blue-400 (seca moderada)
-    if (drought <= 6) return '#3b82f6' // blue-500 (seca considerável)
+  // Função para calcular cor baseada no estado atual do jogador
+  const getPlayerColor = useCallback((entry: StreakData) => {
+    // Se tem streak ativo, retorna laranja (fogo)
+    if (entry.currentStreak > 0) {
+      // Gradiente de laranja baseado no streak atual
+      if (entry.currentStreak >= 5) return '#ea580c' // orange-600 (fogo intenso)
+      if (entry.currentStreak >= 3) return '#f97316' // orange-500 (fogo forte)
+      return '#fb923c' // orange-400 (fogo moderado)
+    }
+    
+    // Sem streak ativo, retorna azul baseado na seca máxima
+    if (entry.maxDrought === 0) return '#bfdbfe' // blue-200 (sem seca)
+    if (entry.maxDrought <= 2) return '#93c5fd' // blue-300 (seca leve)
+    if (entry.maxDrought <= 4) return '#60a5fa' // blue-400 (seca moderada)
+    if (entry.maxDrought <= 6) return '#3b82f6' // blue-500 (seca considerável)
     return '#1e40af' // blue-800 (seca intensa - gelo profundo ❄️)
   }, [])
 
@@ -172,7 +185,7 @@ export function StreaksChart({ tournaments, results, topPlayers, colors }: Strea
     return (
       <Card>
         <CardHeader>
-          <CardTitle>🔥 Análise de Streaks</CardTitle>
+          <CardTitle>{isFiltered && '🔍 '}🔥 Análise de Streaks</CardTitle>
           <p className="text-sm text-muted-foreground">Sequências de TOPs consecutivos e períodos sem TOP</p>
         </CardHeader>
         <CardContent>
@@ -185,18 +198,23 @@ export function StreaksChart({ tournaments, results, topPlayers, colors }: Strea
   return (
     <Card>
       <CardHeader>
-        <CardTitle>🔥 Análise de Streaks</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Relação entre streak máxima, streak atual e desempenho geral
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>🔥 Análise de Streaks</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Relação entre streak máxima, streak atual e desempenho geral
+            </p>
+          </div>
+          <FilterBadge isFiltered={isFiltered} filteredCount={filteredCount} totalCount={totalCount} />
+        </div>
         <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-xs text-blue-800 leading-relaxed">
             💡 <span className="font-semibold">Como ler:</span> Cada bolha representa um jogador. 
             <strong className="text-orange-600"> Eixo X (🔥)</strong>: maior sequência de TOPs consecutivos. 
             <strong className="text-orange-600"> Eixo Y (⚡)</strong>: sequência atual de TOPs. 
             <strong> Tamanho</strong>: total de TOPs conquistados. 
-            <strong className="text-blue-600"> Cor (❄️)</strong>: maior seca (azul claro = pouca seca, azul escuro = muito gelo). 
-            Bolhas agrupadas com borda roxa indicam jogadores com mesmos valores dispersos em círculo.
+            <strong className="text-orange-600"> Cor Laranja (🔥)</strong>: streak ativo. 
+            <strong className="text-blue-600"> Cor Azul (❄️)</strong>: sem streak ativo (intensidade = maior seca).
           </p>
         </div>
       </CardHeader>
@@ -336,18 +354,17 @@ export function StreaksChart({ tournaments, results, topPlayers, colors }: Strea
             
             <Scatter 
               data={filteredData} 
-              fill="#8884d8"
               animationDuration={800}
             >
               {filteredData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`}
-                  fill={getDroughtColor(entry.maxDrought)}
-                  stroke={entry.currentStreak > 0 ? '#f97316' : entry.isGrouped ? '#9333ea' : '#64748b'}
-                  strokeWidth={entry.currentStreak > 0 ? 3 : entry.isGrouped ? 2 : 1}
+                  fill={getPlayerColor(entry)}
+                  stroke="#1e293b"
+                  strokeWidth={0.5}
                   style={{ 
                     cursor: 'pointer',
-                    opacity: 0.85
+                    opacity: 1
                   }}
                 />
               ))}
@@ -358,45 +375,45 @@ export function StreaksChart({ tournaments, results, topPlayers, colors }: Strea
         {/* Legenda */}
         <div className="mt-6 space-y-4">
           <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Cor da Bolha (Seca Máxima):</p>
+            <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Cor da Bolha - Streak Ativo 🔥:</p>
             <div className="flex flex-wrap gap-3 justify-center">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2" style={{ backgroundColor: '#bfdbfe' }} />
-                <span className="text-xs text-gray-600">0 torneios (sem gelo)</span>
+                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: '#fb923c' }} />
+                <span className="text-xs text-gray-600">1-2 TOPs seguidos (fogo moderado)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2" style={{ backgroundColor: '#93c5fd' }} />
-                <span className="text-xs text-gray-600">1-2 torneios (gelo leve ❄️)</span>
+                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: '#f97316' }} />
+                <span className="text-xs text-gray-600">3-4 TOPs seguidos (fogo forte 🔥)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2" style={{ backgroundColor: '#60a5fa' }} />
-                <span className="text-xs text-gray-600">3-4 torneios (gelo moderado ❄️)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2" style={{ backgroundColor: '#3b82f6' }} />
-                <span className="text-xs text-gray-600">5-6 torneios (muito gelo ❄️❄️)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2" style={{ backgroundColor: '#1e40af' }} />
-                <span className="text-xs text-gray-600">7+ torneios (era do gelo ❄️❄️❄️)</span>
+                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: '#ea580c' }} />
+                <span className="text-xs text-gray-600">5+ TOPs seguidos (fogo intenso 🔥🔥)</span>
               </div>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 pt-3 border-t">
-            <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Borda da Bolha:</p>
-            <div className="flex flex-wrap gap-4 justify-center">
+            <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Cor da Bolha - Sem Streak (Seca Máxima) ❄️:</p>
+            <div className="flex flex-wrap gap-3 justify-center">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-blue-400 border-[3px] border-orange-500" />
-                <span className="text-xs text-gray-600">Streak ativo 🔥 (borda laranja grossa)</span>
+                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: '#bfdbfe' }} />
+                <span className="text-xs text-gray-600">0 torneios (sem gelo)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-blue-400 border-2 border-purple-600" />
-                <span className="text-xs text-gray-600">Agrupado 👥 (borda roxa, disperso em círculo)</span>
+                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: '#93c5fd' }} />
+                <span className="text-xs text-gray-600">1-2 torneios (gelo leve)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-blue-400 border border-slate-500" />
-                <span className="text-xs text-gray-600">Sem streak ativo (borda cinza fina)</span>
+                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: '#60a5fa' }} />
+                <span className="text-xs text-gray-600">3-4 torneios (gelo moderado ❄️)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: '#3b82f6' }} />
+                <span className="text-xs text-gray-600">5-6 torneios (muito gelo ❄️❄️)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full" style={{ backgroundColor: '#1e40af' }} />
+                <span className="text-xs text-gray-600">7+ torneios (era do gelo ❄️❄️❄️)</span>
               </div>
             </div>
           </div>
@@ -423,7 +440,7 @@ export function StreaksChart({ tournaments, results, topPlayers, colors }: Strea
               >
                 <div 
                   className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: colors[index % colors.length] }}
+                  style={{ backgroundColor: getPlayerColor(player) }}
                 />
                 <span className="text-sm font-medium text-gray-700">{player.name}</span>
               </button>

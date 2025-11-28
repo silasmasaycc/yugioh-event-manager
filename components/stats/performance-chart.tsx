@@ -2,7 +2,8 @@
 
 import { useMemo, useCallback, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Scatter } from 'recharts'
+import { FilterBadge } from './filter-badge'
 
 interface PlayerStats {
   name: string
@@ -14,6 +15,9 @@ interface PlayerStats {
 interface PerformanceChartProps {
   data: PlayerStats[]
   colors: string[]
+  isFiltered?: boolean
+  filteredCount?: number
+  totalCount?: number
 }
 
 // Função para determinar a cor baseada no desempenho
@@ -23,7 +27,7 @@ const getPerformanceColor = (percentage: number): string => {
   return '#ef4444' // Vermelho (regular)
 }
 
-export function PerformanceChart({ data, colors }: PerformanceChartProps) {
+export function PerformanceChart({ data, colors, isFiltered = false, filteredCount, totalCount }: PerformanceChartProps) {
   const [hiddenPlayers, setHiddenPlayers] = useState<Set<string>>(new Set())
 
   const filteredData = useMemo(() =>
@@ -47,7 +51,7 @@ export function PerformanceChart({ data, colors }: PerformanceChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>📊 Taxa de Desempenho</CardTitle>
+          <CardTitle>{isFiltered && '🔍 '}📊 Taxa de Desempenho</CardTitle>
           <p className="text-sm text-muted-foreground">Percentual de TOPs em relação às participações (mínimo 1 TOP)</p>
         </CardHeader>
         <CardContent>
@@ -60,15 +64,20 @@ export function PerformanceChart({ data, colors }: PerformanceChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>📊 Taxa de Desempenho</CardTitle>
-        <p className="text-sm text-muted-foreground">Percentual de TOPs em relação às participações (mínimo 1 TOP)</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>📊 Taxa de Desempenho</CardTitle>
+            <p className="text-sm text-muted-foreground">Percentual de TOPs em relação às participações (mínimo 1 TOP)</p>
+          </div>
+          <FilterBadge isFiltered={isFiltered} filteredCount={filteredCount} totalCount={totalCount} />
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart 
+          <ComposedChart 
             data={filteredData} 
             layout="vertical"
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            margin={{ top: 5, right: 80, left: 20, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
             <XAxis 
@@ -87,7 +96,7 @@ export function PerformanceChart({ data, colors }: PerformanceChartProps) {
                 if (active && payload && payload.length) {
                   const data = payload[0].payload
                   return (
-                    <div className="bg-white p-3 border rounded shadow-lg">
+                    <div className="bg-white p-3 border-2 border-gray-200 rounded-lg shadow-xl">
                       <p className="font-semibold text-sm mb-1">{data.name}</p>
                       <p className="text-lg font-bold" style={{ color: getPerformanceColor(data.topPercentage) }}>
                         {data.topPercentage.toFixed(1)}% de aproveitamento
@@ -106,46 +115,72 @@ export function PerformanceChart({ data, colors }: PerformanceChartProps) {
                 return null
               }}
             />
+            
+            {/* Linha horizontal (cabo do pirulito) */}
             <Bar 
               dataKey="topPercentage" 
-              radius={[0, 8, 8, 0]}
-              animationDuration={800}
-              animationEasing="ease-out"
+              fill="transparent"
+              isAnimationActive={false}
+              barSize={2}
             >
               {filteredData.map((entry, index) => (
                 <Cell 
-                  key={`cell-${index}`} 
+                  key={`line-${index}`} 
                   fill={getPerformanceColor(entry.topPercentage)}
-                  style={{ 
-                    transition: 'all 300ms ease-in-out',
-                    cursor: 'pointer',
-                    opacity: 0.9
-                  }}
+                  style={{ opacity: 0.3 }}
                 />
               ))}
-              <LabelList 
-                dataKey="topPercentage" 
-                position="right"
-                content={(props: any) => {
-                  const { x, y, width, value, index } = props
-                  if (index === undefined || !filteredData[index]) return null
-                  
-                  const player = filteredData[index]
-                  return (
+            </Bar>
+
+            {/* Ponto no final (cabeça do pirulito) */}
+            <Scatter
+              dataKey="topPercentage"
+              fill="#8884d8"
+              shape={(props: any) => {
+                const { cx, cy, payload } = props
+                const color = getPerformanceColor(payload.topPercentage)
+                const radius = 8
+                
+                return (
+                  <g>
+                    {/* Círculo principal */}
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={radius}
+                      fill={color}
+                      stroke="#fff"
+                      strokeWidth={2}
+                      style={{ 
+                        filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.2))',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    {/* Label com porcentagem */}
                     <text
-                      x={x + width + 5}
-                      y={y + 10}
+                      x={cx + radius + 8}
+                      y={cy + 1}
                       fill="#374151"
                       fontSize="12"
                       fontWeight="600"
+                      dominantBaseline="middle"
                     >
-                      {value.toFixed(1)}% ({player.tops}/{player.participations})
+                      {payload.topPercentage.toFixed(1)}%
                     </text>
-                  )
-                }}
-              />
-            </Bar>
-          </BarChart>
+                    <text
+                      x={cx + radius + 8}
+                      y={cy + 14}
+                      fill="#6b7280"
+                      fontSize="10"
+                      dominantBaseline="middle"
+                    >
+                      ({payload.tops}/{payload.participations})
+                    </text>
+                  </g>
+                )
+              }}
+            />
+          </ComposedChart>
         </ResponsiveContainer>
         
         {/* Legenda de cores */}
@@ -194,8 +229,8 @@ export function PerformanceChart({ data, colors }: PerformanceChartProps) {
         {/* Insights */}
         <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-xs text-blue-800 leading-relaxed">
-            💡 <span className="font-semibold">Dica:</span> Este gráfico mostra a eficiência de cada jogador. 
-            A porcentagem indica quantos TOPs foram conquistados em relação ao total de participações. 
+            💡 <span className="font-semibold">Dica:</span> Este gráfico no estilo "lollipop" (pirulito) mostra a eficiência de cada jogador. 
+            O ponto colorido representa a porcentagem de TOPs conquistados em relação ao total de participações. 
             Cores ajudam a identificar rapidamente o nível de desempenho: verde (excelente), laranja (bom), vermelho (regular).
           </p>
         </div>
