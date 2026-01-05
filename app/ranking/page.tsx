@@ -83,9 +83,10 @@ export default function RankingPage() {
                     <li><strong>Pontuação total</strong> (soma dos pontos)</li>
                     <li><strong>Quantidade de TOPs</strong> (1º ao 4º)</li>
                     <li><strong>Porcentagem</strong> (aproveitamento)</li>
+                    <li><strong>Qualidade das colocações</strong> (1º {'>'} 2º {'>'} 3º {'>'} 4º)</li>
                   </ol>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-3 mb-1 font-semibold">Para jogadores sem TOPs:</p>
-                  <ol className="space-y-2 text-sm text-gray-700 dark:text-gray-300 list-decimal list-inside" start={4}>
+                  <ol className="space-y-2 text-sm text-gray-700 dark:text-gray-300 list-decimal list-inside" start={5}>
                     <li><strong>Participações</strong> (dedicação)</li>
                     <li><strong>Ordem alfabética</strong></li>
                   </ol>

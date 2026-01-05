@@ -103,8 +103,9 @@ export function calculatePlayerScore(player: PlayerStats): number {
  * 1. Sistema de Pontos (1º=4pts, 2º=3pts, 3º/4º=2pts)
  * 2. Quantidade de TOPs (colocações de destaque)
  * 3. Porcentagem de desempenho do jogador
- * 4. Número de participações (para jogadores sem TOPs)
- * 5. Nome (ordem alfabética - desempate final)
+ * 4. Qualidade das colocações (1º lugar > 2º lugar > 3º lugar > 4º lugar)
+ * 5. Número de participações (para jogadores sem TOPs)
+ * 6. Nome (ordem alfabética - desempate final)
  * 
  * Para jogadores SEM TOPs:
  * - São ordenados por número de participações (maior = mais dedicado)
@@ -133,13 +134,34 @@ export function sortPlayersByPerformance(playerA: PlayerStats, playerB: PlayerSt
     return playerB.topPercentage - playerA.topPercentage
   }
 
-  // Critério 4: Número de participações (para jogadores sem TOPs ou empate)
+  // Critério 4: Qualidade das colocações (1º > 2º > 3º > 4º)
+  // Compara primeiro lugares
+  if (playerB.firstPlace !== playerA.firstPlace) {
+    return playerB.firstPlace - playerA.firstPlace
+  }
+  
+  // Compara segundos lugares
+  if (playerB.secondPlace !== playerA.secondPlace) {
+    return playerB.secondPlace - playerA.secondPlace
+  }
+  
+  // Compara terceiros lugares
+  if (playerB.thirdPlace !== playerA.thirdPlace) {
+    return playerB.thirdPlace - playerA.thirdPlace
+  }
+  
+  // Compara quartos lugares
+  if (playerB.fourthPlace !== playerA.fourthPlace) {
+    return playerB.fourthPlace - playerA.fourthPlace
+  }
+
+  // Critério 5: Número de participações (para jogadores sem TOPs ou empate)
   // Jogadores com mais participações mostram mais dedicação
   if (playerB.totalTournaments !== playerA.totalTournaments) {
     return playerB.totalTournaments - playerA.totalTournaments
   }
 
-  // Critério 5: Ordem alfabética (desempate final)
+  // Critério 6: Ordem alfabética (desempate final)
   return playerA.name.localeCompare(playerB.name)
 }
 

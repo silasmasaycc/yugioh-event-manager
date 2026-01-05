@@ -1,12 +1,8 @@
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { MapPin, Users, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { formatDate } from '@/lib/utils'
 import { PageLayout } from '@/components/layout/page-layout'
-import { TOP_POSITIONS, MEDAL_ICONS } from '@/lib/constants'
 import { ERROR_MESSAGES, LABELS } from '@/lib/constants/messages'
-import { PlayerAvatar } from '@/components/player/player-avatar'
 import { logger } from '@/lib/utils/logger'
+import { TournamentCard } from '@/components/tournaments/tournament-card'
 
 export const revalidate = 3600 // 1 hora
 
@@ -49,68 +45,9 @@ export default async function TournamentsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {tournaments?.map((tournament) => {
-            // Ordenar resultados por placement e pegar top 4
-            const topResults = (tournament.tournament_results || [])
-              .filter((result: any) => result.placement !== null && result.placement >= 1 && result.placement <= TOP_POSITIONS)
-              .sort((resultA: any, resultB: any) => resultA.placement - resultB.placement)
-              .slice(0, TOP_POSITIONS)
-
-            return (
-              <Card key={tournament.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div>
-                    <CardTitle className="text-2xl mb-2">{tournament.name}</CardTitle>
-                    <CardDescription className="flex flex-col gap-2">
-                      <span className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {formatDate(tournament.date)}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        {tournament.player_count} jogadores
-                      </span>
-                      {tournament.location && (
-                        <span className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          {tournament.location}
-                        </span>
-                      )}
-                    </CardDescription>
-                  </div>
-
-                  {topResults.length > 0 && (
-                    <div className="mt-4 pt-4 border-t">
-                      <h4 className="text-sm font-semibold mb-3 text-gray-700">Classificação Final</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {topResults.map((result: any) => {
-                          const medal = MEDAL_ICONS[result.placement as 1 | 2 | 3 | 4] || '🏆'
-                          
-                          return (
-                            <div
-                              key={`${result.tournament_id}-${result.placement}`}
-                              className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-                            >
-                              <span className="text-2xl flex-shrink-0">{medal}</span>
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <PlayerAvatar
-                                  imageUrl={result.player?.image_url}
-                                  playerName={result.player?.name || 'N/A'}
-                                  size="sm"
-                                />
-                                <span className="text-sm font-medium truncate">{result.player?.name || 'N/A'}</span>
-                              </div>
-                              <span className="text-xs text-gray-500 flex-shrink-0">{result.placement}º</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </CardHeader>
-              </Card>
-            )
-          })}
+        {tournaments?.map((tournament) => (
+          <TournamentCard key={tournament.id} tournament={tournament} />
+        ))}
       </div>
 
       {(!tournaments || tournaments.length === 0) && (
