@@ -26,7 +26,7 @@ interface TournamentCardProps {
 }
 
 export function TournamentCard({ tournament }: TournamentCardProps) {
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // Ordenar resultados por placement e pegar top 4
   const topResults = (tournament.tournament_results || [])
@@ -105,7 +105,7 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
               )}
             </button>
             
-            {isExpanded && (
+            <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'opacity-100 max-h-[2000px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
               <div className="flex flex-wrap gap-2 mt-3">
                 {otherPlayers.map((result, index) => (
                   <div
@@ -121,7 +121,7 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
                   </div>
                 ))}
               </div>
-            )}
+            </div>
           </div>
         )}
       </CardHeader>
