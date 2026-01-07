@@ -8,10 +8,18 @@ interface PlayerData {
   totalTops: number
 }
 
+interface PenaltyData {
+  name: string
+  totalPenalties: number
+  penaltyRate: number
+  totalTournaments: number
+}
+
 interface ExportData {
   players: PlayerData[]
   totalPlayers: number
   top10Average: number
+  penaltyStats?: PenaltyData[]
 }
 
 export async function exportRankingAsImage(
@@ -148,6 +156,38 @@ function createExportElement(data: ExportData): HTMLElement {
           `
         }).join('')}
       </div>
+
+      <!-- Top 5 Double Loss -->
+      ${data.penaltyStats && data.penaltyStats.length > 0 ? `
+      <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-radius: 12px; padding: 24px; margin-bottom: 32px;">
+        <div style="font-size: 20px; font-weight: 700; color: #991b1b; margin-bottom: 20px;">
+          ⚠️ Top 5 - Double Loss
+        </div>
+        ${data.penaltyStats.slice(0, 5).map((player, index) => {
+          const medals = ['🥇', '🥈', '🥉']
+          const medal = index < 3 ? medals[index] : `#${index + 1}`
+          
+          return `
+            <div style="height: 60px; display: flex; align-items: center; margin-bottom: 8px; background: #ffffff; border-left: 4px solid #ef4444; border-radius: 8px;">
+              <div style="width: 60px; font-size: 18px; font-weight: 700; text-align: center; flex-shrink: 0; color: #ef4444;">${medal}</div>
+              <div style="flex: 1; font-size: 16px; font-weight: 600; color: #1e293b;">${player.name}</div>
+              <div style="width: 100px; text-align: center; flex-shrink: 0;">
+                <div style="font-size: 16px; font-weight: 800; color: #ef4444;">${player.totalPenalties}</div>
+                <div style="font-size: 10px; color: #64748b;">Double Loss</div>
+              </div>
+              <div style="width: 90px; text-align: center; flex-shrink: 0;">
+                <div style="font-size: 16px; font-weight: 800; color: #f97316;">${player.penaltyRate.toFixed(0)}%</div>
+                <div style="font-size: 10px; color: #64748b;">Taxa</div>
+              </div>
+              <div style="width: 90px; text-align: center; flex-shrink: 0;">
+                <div style="font-size: 16px; font-weight: 800; color: #94a3b8;">${player.totalTournaments}</div>
+                <div style="font-size: 10px; color: #64748b;">Torneios</div>
+              </div>
+            </div>
+          `
+        }).join('')}
+      </div>
+      ` : ''}
 
       <!-- Distribuição por Tier -->
       <div style="background: linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%); border-radius: 12px; padding: 24px; margin-bottom: 32px;">

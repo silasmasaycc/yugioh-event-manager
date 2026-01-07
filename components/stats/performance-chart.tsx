@@ -23,8 +23,9 @@ interface PerformanceChartProps {
 // Função para determinar a cor baseada no desempenho
 const getPerformanceColor = (percentage: number): string => {
   if (percentage >= 70) return '#10b981' // Verde (excelente)
-  if (percentage >= 50) return '#f59e0b' // Amarelo/Laranja (bom)
-  return '#ef4444' // Vermelho (regular)
+  if (percentage >= 51) return '#3b82f6' // Azul (ótimo)
+  if (percentage >= 30) return '#f59e0b' // Laranja (regular)
+  return '#ef4444' // Vermelho (ruim)
 }
 
 export function PerformanceChart({ data, colors, isFiltered = false, filteredCount, totalCount }: PerformanceChartProps) {
@@ -106,8 +107,9 @@ export function PerformanceChart({ data, colors, isFiltered = false, filteredCou
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {data.topPercentage >= 70 && '🏆 Excelente desempenho!'}
-                        {data.topPercentage >= 50 && data.topPercentage < 70 && '👍 Bom desempenho'}
-                        {data.topPercentage < 50 && '📈 Pode melhorar'}
+                        {data.topPercentage >= 51 && data.topPercentage < 70 && '💎 Ótimo desempenho!'}
+                        {data.topPercentage >= 30 && data.topPercentage < 51 && '👍 Desempenho regular'}
+                        {data.topPercentage < 30 && '📈 Precisa melhorar'}
                       </p>
                     </div>
                   )
@@ -184,18 +186,22 @@ export function PerformanceChart({ data, colors, isFiltered = false, filteredCou
         </ResponsiveContainer>
         
         {/* Legenda de cores */}
-        <div className="flex justify-center gap-6 mt-6 mb-4 text-xs">
+        <div className="flex flex-wrap justify-center gap-4 mt-6 mb-4 text-xs">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: '#10b981' }} />
             <span className="text-gray-600">≥ 70% - Excelente</span>
           </div>
           <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: '#3b82f6' }} />
+            <span className="text-gray-600">51-69% - Ótimo</span>
+          </div>
+          <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: '#f59e0b' }} />
-            <span className="text-gray-600">50-69% - Bom</span>
+            <span className="text-gray-600">30-50% - Regular</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ef4444' }} />
-            <span className="text-gray-600">&lt; 50% - Regular</span>
+            <span className="text-gray-600">&lt; 30% - Ruim</span>
           </div>
         </div>
 
@@ -231,7 +237,7 @@ export function PerformanceChart({ data, colors, isFiltered = false, filteredCou
           <p className="text-xs text-blue-800 leading-relaxed">
             💡 <span className="font-semibold">Dica:</span> Este gráfico no estilo "lollipop" (pirulito) mostra a eficiência de cada jogador. 
             O ponto colorido representa a porcentagem de TOPs conquistados em relação ao total de participações. 
-            Cores ajudam a identificar rapidamente o nível de desempenho: verde (excelente), laranja (bom), vermelho (regular).
+            Cores ajudam a identificar rapidamente o nível de desempenho: verde (excelente), azul (ótimo), laranja (regular), vermelho (ruim).
           </p>
         </div>
       </CardContent>

@@ -51,6 +51,12 @@ export function RankingClient({ players, penaltyStats }: RankingClientProps) {
           position: index + 1,
           totalTops: p.totalTops
         })),
+        penaltyStats: penaltyStats.map(p => ({
+          name: p.name,
+          totalPenalties: p.totalPenalties,
+          penaltyRate: p.penaltyRate,
+          totalTournaments: p.totalTournaments
+        })),
         totalPlayers: stats.total,
         top10Average: stats.top10Average
       }
@@ -89,19 +95,19 @@ export function RankingClient({ players, penaltyStats }: RankingClientProps) {
   return (
     <PageLayout activeRoute="/ranking">
       <div className="mb-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-4xl font-bold mb-2">Rankings</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-2">Rankings</h2>
             <p className="text-gray-600 dark:text-gray-300">
               Classificações e estatísticas dos jogadores
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               onClick={handleExportTiers}
               disabled={isExportingTiers}
               variant="outline"
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
               size="lg"
             >
               {isExportingTiers ? (
@@ -112,14 +118,15 @@ export function RankingClient({ players, penaltyStats }: RankingClientProps) {
               ) : (
                 <>
                   <List className="h-4 w-4" />
-                  Exportar Tiers
+                  <span className="hidden sm:inline">Exportar Tiers</span>
+                  <span className="sm:hidden">Tiers</span>
                 </>
               )}
             </Button>
             <Button
               onClick={handleExport}
               disabled={isExporting}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
               size="lg"
             >
               {isExporting ? (
@@ -130,7 +137,8 @@ export function RankingClient({ players, penaltyStats }: RankingClientProps) {
               ) : (
                 <>
                   <Download className="h-4 w-4" />
-                  Exportar Ranking
+                  <span className="hidden sm:inline">Exportar Ranking</span>
+                  <span className="sm:hidden">Ranking</span>
                 </>
               )}
             </Button>

@@ -83,17 +83,19 @@ export function BestPlayersRanking({ players }: BestPlayersRankingProps) {
             key={player.id} 
             className={`hover:shadow-lg transition-shadow ${getTierBorderColor(player.tier)}`}
           >
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-3 sm:gap-4">
+            <CardContent className="p-2 sm:p-3 md:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
                 {/* Posição */}
-                <PositionBadge 
-                  position={index + 1} 
-                  variant="medal" 
-                  size="sm"
-                />
+                <div className="shrink-0">
+                  <PositionBadge 
+                    position={index + 1} 
+                    variant="medal" 
+                    size="sm"
+                  />
+                </div>
 
                 {/* Avatar com Badge de Tier */}
-                <div className="relative">
+                <div className="relative shrink-0">
                   <PlayerAvatar
                     imageUrl={player.image_url}
                     playerName={player.name}
@@ -108,43 +110,43 @@ export function BestPlayersRanking({ players }: BestPlayersRankingProps) {
 
                 {/* Nome e Info */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-bold truncate">{player.name}</h3>
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <h3 className="font-bold truncate text-sm sm:text-base">{player.name}</h3>
+                  <div className="flex flex-wrap gap-1 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground">
                     <span>{player.totalTournaments} torneio{player.totalTournaments !== 1 ? 's' : ''}</span>
                     {tierPosition && (
-                      <span className="text-purple-600 dark:text-purple-400 font-semibold">• {tierPosition}</span>
+                      <span className="text-purple-600 dark:text-purple-400 font-semibold hidden sm:inline">• {tierPosition}</span>
                     )}
                   </div>
                 </div>
 
                 {/* Métricas Compactas */}
-                <div className="flex gap-2 sm:gap-3">
-                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg px-2 py-1 text-center min-w-[3rem]">
-                    <div className="text-lg sm:text-xl font-bold text-purple-600 dark:text-purple-400">
+                <div className="flex gap-1.5 sm:gap-2 md:gap-3 shrink-0">
+                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg px-1.5 sm:px-2 py-1 text-center min-w-[2.5rem] sm:min-w-[3rem]">
+                    <div className="text-base sm:text-lg md:text-xl font-bold text-purple-600 dark:text-purple-400">
                       {player.points}
                     </div>
-                    <div className="text-[10px] text-gray-600 dark:text-gray-400">pts</div>
+                    <div className="text-[9px] sm:text-[10px] text-gray-600 dark:text-gray-400">pts</div>
                   </div>
 
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-2 py-1 text-center min-w-[3rem]">
-                    <div className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-1.5 sm:px-2 py-1 text-center min-w-[2.5rem] sm:min-w-[3rem]">
+                    <div className="text-base sm:text-lg md:text-xl font-bold text-blue-600 dark:text-blue-400">
                       {player.totalTops}
                     </div>
-                    <div className="text-[10px] text-gray-600 dark:text-gray-400">TOPs</div>
+                    <div className="text-[9px] sm:text-[10px] text-gray-600 dark:text-gray-400">TOPs</div>
                   </div>
 
-                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg px-2 py-1 text-center min-w-[3rem]">
-                    <div className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg px-1.5 sm:px-2 py-1 text-center min-w-[2.5rem] sm:min-w-[3rem]">
+                    <div className="text-base sm:text-lg md:text-xl font-bold text-green-600 dark:text-green-400">
                       {player.topPercentage.toFixed(0)}%
                     </div>
-                    <div className="text-[10px] text-gray-600 dark:text-gray-400">taxa</div>
+                    <div className="text-[9px] sm:text-[10px] text-gray-600 dark:text-gray-400">taxa</div>
                   </div>
                 </div>
               </div>
 
               {/* Detalhamento (linha inferior compacta) */}
               <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <div className="flex gap-3 text-xs">
+                <div className="flex gap-2 sm:gap-3 text-[10px] sm:text-xs">
                   <span className="text-gray-600 dark:text-gray-400">
                     {MEDAL_ICONS[1]} <strong className="text-yellow-600">{player.firstPlace}</strong>
                   </span>

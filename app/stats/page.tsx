@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { PageLayout } from '@/components/layout/page-layout'
-import { PerformanceChart, TopsEvolutionChart, PlacementChart, StreaksChart, ImprovementChart } from '@/components/stats'
+import { PlayerProfileChart, PerformanceChart, TopsEvolutionChart, StreaksChart, ImprovementChart } from '@/components/stats'
 import { ERROR_MESSAGES } from '@/lib/constants/messages'
 import { logger } from '@/lib/utils/logger'
 import { generateColors, formatDateLong } from '@/lib/utils'
@@ -24,6 +24,13 @@ interface PlayerStats {
   participations: number
   tops: number
   topPercentage: number
+  firstPlace?: number
+  secondPlace?: number
+  thirdPlace?: number
+  fourthPlace?: number
+  points?: number
+  currentStreak?: number
+  bestStreak?: number
 }
 
 interface PlacementDistribution {
@@ -118,12 +125,64 @@ export default function StatsPage() {
         const tops = playerResults.filter((result: any) => result.placement !== null && result.placement <= TOP_POSITIONS).length
         const topPercentage = participations > 0 ? (tops / participations) * 100 : 0
 
+        // Contar colocações
+        const firstPlace = playerResults.filter((result: any) => result.placement === FIRST_PLACE).length
+        const secondPlace = playerResults.filter((result: any) => result.placement === SECOND_PLACE).length
+        const thirdPlace = playerResults.filter((result: any) => result.placement === THIRD_PLACE).length
+        const fourthPlace = playerResults.filter((result: any) => result.placement === FOURTH_PLACE).length
+
+        // Calcular pontos
+        const points = firstPlace * 4 + secondPlace * 3 + thirdPlace * 2 + fourthPlace * 2
+
+        // Calcular streaks
+        const sortedResults = playerResults
+          .filter((result: any) => result.placement !== null && result.placement <= TOP_POSITIONS)
+          .sort((a: any, b: any) => {
+            const dateA = tournaments.find(t => t.id === a.tournament_id)?.date || ''
+            const dateB = tournaments.find(t => t.id === b.tournament_id)?.date || ''
+            return dateA.localeCompare(dateB)
+          })
+
+        let currentStreak = 0
+        let bestStreak = 0
+        let tempStreak = 0
+
+        sortedResults.forEach(() => {
+          tempStreak++
+          if (tempStreak > bestStreak) {
+            bestStreak = tempStreak
+          }
+        })
+
+        // Para streak atual, verificar os últimos torneios
+        const recentResults = playerResults
+          .sort((a: any, b: any) => {
+            const dateA = tournaments.find(t => t.id === a.tournament_id)?.date || ''
+            const dateB = tournaments.find(t => t.id === b.tournament_id)?.date || ''
+            return dateB.localeCompare(dateA)
+          })
+
+        for (const result of recentResults) {
+          if (result.placement !== null && result.placement <= TOP_POSITIONS) {
+            currentStreak++
+          } else {
+            break
+          }
+        }
+
         if (participations > 0) {
           playerStatsMap.set(player.id, {
             name: player.name,
             participations,
             tops,
-            topPercentage
+            topPercentage,
+            firstPlace,
+            secondPlace,
+            thirdPlace,
+            fourthPlace,
+            points,
+            currentStreak,
+            bestStreak
           })
         }
       })
@@ -294,6 +353,25 @@ export default function StatsPage() {
         </div>
       ) : (
         <div className="space-y-8">
+          <PlayerProfileChart 
+            data={bestPerformance.map(p => ({
+              name: p.name,
+              participations: p.participations,
+              tops: p.tops,
+              topPercentage: p.topPercentage,
+              firstPlace: p.firstPlace ?? 0,
+              secondPlace: p.secondPlace ?? 0,
+              thirdPlace: p.thirdPlace ?? 0,
+              fourthPlace: p.fourthPlace ?? 0,
+              points: p.points ?? 0,
+              currentStreak: p.currentStreak ?? 0,
+              bestStreak: p.bestStreak ?? 0
+            }))} 
+            colors={generateColors(bestPerformance.map(p => p.name))} 
+            isFiltered={isFiltered}
+            filteredCount={filteredTournaments}
+            totalCount={totalTournaments}
+          />
           <StreaksChart 
             tournaments={topsEvolutionData.tournaments}
             results={topsEvolutionData.results}
@@ -324,13 +402,6 @@ export default function StatsPage() {
           <PerformanceChart 
             data={bestPerformance} 
             colors={generateColors(bestPerformance.map(p => p.name))} 
-            isFiltered={isFiltered}
-            filteredCount={filteredTournaments}
-            totalCount={totalTournaments}
-          />
-          <PlacementChart 
-            data={placementDistribution} 
-            colors={generateColors(placementDistribution.map(p => p.name))} 
             isFiltered={isFiltered}
             filteredCount={filteredTournaments}
             totalCount={totalTournaments}
