@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { RankingClient } from './ranking-client'
-import { calculatePlayerStats, sortPlayersByPerformance } from '@/lib/utils/player-stats'
+import { filterAndProcessPlayers, processPenaltyStats } from '@/lib/utils/process-players'
+import { calculateTiers } from '@/lib/utils/tier-calculator'
 import { ERROR_MESSAGES } from '@/lib/constants/messages'
 import { logger } from '@/lib/utils/logger'
 
@@ -8,6 +9,18 @@ export const revalidate = 3600 // 1 hora
 
 export default async function RankingPage() {
   const supabase = await createClient()
+
+  // Buscar apenas torneios de veteranos (excluir torneios de novatos)
+  const { data: regularTournaments, error: tournamentsError } = await supabase
+    .from('tournaments')
+    .select('id')
+    .neq('tournament_type', 'beginner')
+
+  if (tournamentsError) {
+    logger.error('Erro ao carregar torneios de veteranos', tournamentsError)
+  }
+
+  const regularTournamentIds = regularTournaments?.map(t => t.id) || []
 
   // Query otimizada com LEFT JOIN
   const { data: players, error: playersError } = await supabase
@@ -17,7 +30,7 @@ export default async function RankingPage() {
       tournament_results(
         placement, 
         tournament_id,
-        tournaments(date)
+        tournaments(date, tournament_type)
       ),
       penalties(player_id)
     `)
@@ -32,71 +45,28 @@ export default async function RankingPage() {
     )
   }
 
-  // Calcular estatísticas para cada jogador
-  const playersWithStats = players?.map(player => {
-    const stats = calculatePlayerStats(player, player.penalties || [])
-    const points = (stats.firstPlace * 4) + (stats.secondPlace * 3) + (stats.thirdPlace * 2) + (stats.fourthPlace * 2)
-    return { 
-      ...stats, 
-      points,
-      tournament_results: player.tournament_results || [] // Manter os resultados para calcular tendência
-    }
-  }).sort(sortPlayersByPerformance) || []
+  // Filtrar apenas resultados de torneios de veteranos e processar estatísticas
+  // Apenas jogadores com pelo menos 1 torneio podem entrar no ranking
+  const playersWithStats = filterAndProcessPlayers(players || [], regularTournamentIds)
+    .filter(p => p.totalTournaments > 0)
 
-  // Calcular tier para cada jogador
-  const eligiblePlayersCount = playersWithStats.filter(p => p.totalTournaments >= 1).length
-  const tierSlots = {
-    S: Math.max(1, Math.floor(eligiblePlayersCount * 0.10)),
-    A: Math.max(1, Math.floor(eligiblePlayersCount * 0.20)),
-    B: Math.max(1, Math.floor(eligiblePlayersCount * 0.30))
-  }
+  // Calcular tiers usando função utilitária
+  const { tierSlots, avgPoints, playersWithTiers } = calculateTiers(playersWithStats)
 
-  const top10Players = playersWithStats.slice(0, 10).filter(p => p.points > 0)
-  const avgPoints = top10Players.length > 0 
-    ? Math.ceil(top10Players.reduce((sum, p) => sum + p.points, 0) / top10Players.length)
-    : 0
-
-  const getTier = (player: any, index: number, total: number) => {
-    if (player.totalTournaments < 1) return null
-    const percentile = (index / total) * 100
-    
-    if (percentile < 10 && player.topPercentage >= 51 && player.points >= avgPoints) return 'S'
-    if (percentile < 30 && player.topPercentage >= 40 && player.points >= avgPoints * 0.7) return 'A'
-    if (percentile < 60 && player.points >= avgPoints * 0.5) return 'B'
-    if (percentile < 85 && player.points >= avgPoints * 0.3) return 'C'
-    return 'D'
-  }
-
-  const playersWithTiers = playersWithStats.map((player, index) => ({
-    ...player,
-    tier: getTier(player, index, playersWithStats.length)
-  }))
-
-  // Query para penalidades
-  const { data: penaltyPlayers, error: penaltyError } = await supabase
+  // Query para penalidades de veteranos (sem exigir participação em torneios)
+  const { data: penaltyPlayers } = await supabase
     .from('players')
     .select(`
       *,
       tournament_results(placement, tournament_id),
-      penalties(player_id)
+      penalties!inner(player_id, penalty_type)
     `)
+    .neq('penalties.penalty_type', 'beginner')
     .order('name')
 
-  const penaltyStats = penaltyPlayers?.map(player => {
-    const stats = calculatePlayerStats(player, player.penalties || [])
-    return stats
-  }).filter(p => p.penalties > 0)
-    .sort((a, b) => {
-      if (b.penalties !== a.penalties) return b.penalties - a.penalties
-      const aPenaltyRate = a.totalTournaments > 0 ? (a.penalties / a.totalTournaments) * 100 : 0
-      const bPenaltyRate = b.totalTournaments > 0 ? (b.penalties / b.totalTournaments) * 100 : 0
-      if (bPenaltyRate !== aPenaltyRate) return bPenaltyRate - aPenaltyRate
-      return b.totalTournaments - a.totalTournaments
-    }).map(p => ({
-      ...p,
-      totalPenalties: p.penalties,
-      penaltyRate: p.totalTournaments > 0 ? (p.penalties / p.totalTournaments) * 100 : 0
-    })) || []
+  // Usar função utilitária para processar jogadores com penalidades
+  const penaltyPlayersProcessed = filterAndProcessPlayers(penaltyPlayers || [], regularTournamentIds)
+  const penaltyStats = processPenaltyStats(penaltyPlayersProcessed)
 
   return <RankingClient players={playersWithTiers} penaltyStats={penaltyStats} tierSlots={tierSlots} avgPoints={avgPoints} />
 }

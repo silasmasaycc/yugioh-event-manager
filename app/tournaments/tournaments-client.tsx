@@ -17,6 +17,7 @@ interface TournamentsClientProps {
 export function TournamentsClient({ tournaments }: TournamentsClientProps) {
   const [searchPlayer, setSearchPlayer] = useState('')
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
+  const [tournamentType, setTournamentType] = useState<string>('all')
 
   // Obter lista de meses únicos dos torneios
   const availableMonths = useMemo(() => {
@@ -34,6 +35,17 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
   // Filtrar torneios
   const filteredTournaments = useMemo(() => {
     let filtered = tournaments
+
+    // Filtro por tipo
+    if (tournamentType !== 'all') {
+      filtered = filtered.filter(tournament => {
+        if (tournamentType === 'beginner') {
+          return tournament.tournament_type === 'beginner'
+        } else {
+          return tournament.tournament_type !== 'beginner'
+        }
+      })
+    }
 
     // Filtro por jogador
     if (searchPlayer) {
@@ -55,7 +67,7 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
     }
 
     return filtered
-  }, [tournaments, searchPlayer, selectedMonth])
+  }, [tournaments, searchPlayer, selectedMonth, tournamentType])
 
   // Estatísticas baseadas nos torneios filtrados
   const stats = useMemo(() => {
@@ -73,11 +85,12 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
     }
   }, [filteredTournaments])
 
-  const hasActiveFilters = searchPlayer || selectedMonth !== 'all'
+  const hasActiveFilters = searchPlayer || selectedMonth !== 'all' || tournamentType !== 'all'
 
   const clearFilters = () => {
     setSearchPlayer('')
     setSelectedMonth('all')
+    setTournamentType('all')
   }
 
   // Função para formatar o nome do mês
@@ -142,7 +155,7 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Buscar por jogador */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -153,6 +166,21 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
                 onChange={(e) => setSearchPlayer(e.target.value)}
                 className="pl-10"
               />
+            </div>
+
+            {/* Filtrar por tipo */}
+            <div className="relative">
+              <Trophy className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+              <Select value={tournamentType} onValueChange={setTournamentType}>
+                <SelectTrigger className="pl-10">
+                  <SelectValue placeholder="Todos os tipos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="regular">🏆 Veteranos</SelectItem>
+                  <SelectItem value="beginner">🆕 Novatos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Filtrar por mês */}

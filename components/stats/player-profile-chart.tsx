@@ -37,12 +37,10 @@ interface PlayerProfileChartProps {
 }
 
 // Calcula métricas normalizadas de 0-100 para cada jogador
-const calculatePlayerProfile = (player: PlayerProfileStats, allPlayers: PlayerProfileStats[], totalTournaments: number) => {
-  // Normalizar valores para 0-100
-  const maxStreak = Math.max(...allPlayers.map(p => p.bestStreak || 0))
-  
-  // Calcular consistência baseada em taxa de performance e streak
-  const streakScore = maxStreak > 0 ? ((player.bestStreak || 0) / maxStreak * 100) : 0
+const calculatePlayerProfile = (player: PlayerProfileStats, totalTournaments: number) => {
+  // Calcular consistência baseada na regularidade do próprio jogador
+  // Quanto maior a sequência em relação às participações, mais consistente
+  const streakScore = player.participations > 0 ? ((player.bestStreak || 0) / player.participations * 100) : 0
   const consistency = ((player.topPercentage + streakScore) / 2)
   
   // Calcular pico de performance (peso maior para 1º lugar)
@@ -57,17 +55,20 @@ const calculatePlayerProfile = (player: PlayerProfileStats, allPlayers: PlayerPr
   const maxPossiblePoints = player.participations * 4
   const actualPoints = (player.points || 0)
   const scorePercentage = maxPossiblePoints > 0 ? (actualPoints / maxPossiblePoints) * 100 : 0
+
+  // Calcular experiência do jogador
+  const experience = totalTournaments > 0 ? (player.participations / totalTournaments) * 100 : 0
   
   return {
     'Taxa de Performance': Math.round(player.topPercentage),
     'Consistência': Math.round(consistency),
-    'Experiência': Math.round(totalTournaments > 0 ? (player.participations / totalTournaments) * 100 : 0),
-    'Pico': Math.round(peakPerformance),
+    'Experiência': Math.round(experience),
+    'Qualidade': Math.round(peakPerformance),
     'Pontuação': Math.round(scorePercentage)
   }
 }
 
-export function PlayerProfileChart({ data, colors, isFiltered = false, filteredCount, totalCount }: PlayerProfileChartProps) {
+export function PlayerProfileChart({ data, isFiltered = false, filteredCount, totalCount }: PlayerProfileChartProps) {
   const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(
     new Set(data.slice(0, 3).map(p => p.name))
   )
@@ -86,7 +87,7 @@ export function PlayerProfileChart({ data, colors, isFiltered = false, filteredC
 
   const chartData = useMemo(() => {
     // Criar estrutura de dados para o radar chart
-    const metrics = ['Taxa de Performance', 'Consistência', 'Experiência', 'Pico', 'Pontuação']
+    const metrics = ['Taxa de Performance', 'Consistência', 'Experiência', 'Qualidade', 'Pontuação']
     const tournamentsCount = isFiltered ? (filteredCount || 0) : (totalCount || 0)
     
     return metrics.map(metric => {
@@ -94,7 +95,7 @@ export function PlayerProfileChart({ data, colors, isFiltered = false, filteredC
       
       data.forEach(player => {
         if (selectedPlayers.has(player.name)) {
-          const profile = calculatePlayerProfile(player, data, tournamentsCount)
+          const profile = calculatePlayerProfile(player, tournamentsCount)
           dataPoint[player.name] = profile[metric as keyof typeof profile]
         }
       })
@@ -113,7 +114,7 @@ export function PlayerProfileChart({ data, colors, isFiltered = false, filteredC
       <Card>
         <CardHeader>
           <CardTitle>{isFiltered && '🔍 '}🎭 Perfil dos Jogadores</CardTitle>
-          <p className="text-sm text-muted-foreground">Comparação multidimensional de desempenho (mínimo 1 TOP)</p>
+          <p className="text-sm text-muted-foreground">Comparação multidimensional de desempenho (mínimo 1 TOP e 2 torneios)</p>
         </CardHeader>
         <CardContent>
           <p className="text-center text-gray-500 py-8">Nenhum dado disponível para o período selecionado</p>
@@ -128,7 +129,7 @@ export function PlayerProfileChart({ data, colors, isFiltered = false, filteredC
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>🎭 Perfil dos Jogadores</CardTitle>
-            <p className="text-sm text-muted-foreground">Comparação multidimensional de desempenho (mínimo 1 TOP)</p>
+            <p className="text-sm text-muted-foreground">Comparação multidimensional de desempenho (mínimo 1 TOP e 2 torneios)</p>
           </div>
           <FilterBadge isFiltered={isFiltered} filteredCount={filteredCount} totalCount={totalCount} />
         </div>
@@ -236,16 +237,16 @@ export function PlayerProfileChart({ data, colors, isFiltered = false, filteredC
 
             {/* Coluna 2 */}
             <div className="space-y-4">
-              {/* Pico */}
+              {/* Qualidade */}
               <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                  <strong className="text-orange-600 dark:text-orange-400 text-sm">Pico de Performance</strong>
+                  <strong className="text-orange-600 dark:text-orange-400 text-sm">Qualidade de Performance</strong>
                 </div>
                 <p className="text-xs text-gray-600 dark:text-gray-400 ml-5 leading-relaxed">
                   <strong>O que é:</strong> Qualidade média das suas colocações, valorizando mais os 1º lugares.<br/>
                   <strong>Cálculo:</strong> [(1º×4 + 2º×3 + 3º×2 + 4º×2) ÷ Total TOPs ÷ 4] × 100<br/>
-                  <strong>Exemplo:</strong> 2× 1º lugar + 1× 3º = (8+0+2+0) ÷ 3 ÷ 4 = 67%<br/>
+                  <strong>Exemplo:</strong> 2× 1º lugar + 1× 3º = (8+0+2+0) ÷ 3 ÷ 4 × 100 = 83%<br/>
                   <strong>Interpreta:</strong> Alto = Campeão frequente • Baixo = Apenas completa TOP4
                 </p>
               </div>
@@ -271,16 +272,16 @@ export function PlayerProfileChart({ data, colors, isFiltered = false, filteredC
             <strong className="text-blue-700 dark:text-blue-300 text-xs block mb-2">💡 Perfis Típicos de Jogadores:</strong>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-gray-700 dark:text-gray-300">
               <div>
-                <strong className="text-yellow-600 dark:text-yellow-400">🌟 Novato Promissor:</strong> Alta taxa + Baixa experiência + Alto pico
+                <strong className="text-yellow-600 dark:text-yellow-400">🌟 Novato Promissor:</strong> Alta taxa + Baixa experiência + Alta qualidade
               </div>
               <div>
-                <strong className="text-purple-600 dark:text-purple-400">👑 Veterano Dominante:</strong> Todas métricas altas (pentágono grande e equilibrado)
+                <strong className="text-purple-600 dark:text-purple-400">👑 Veterano Dominante:</strong> Todas as métricas altas (pentágono grande e equilibrado)
               </div>
               <div>
-                <strong className="text-gray-600 dark:text-gray-400">📚 Frequentador Casual:</strong> Alta experiência + Baixas taxa e pico
+                <strong className="text-gray-600 dark:text-gray-400">📚 Frequentador Casual:</strong> Alta experiência + Baixas taxa e qualidade
               </div>
               <div>
-                <strong className="text-orange-600 dark:text-orange-400">🎲 Imprevisível:</strong> Alto pico + Baixa consistência (TOPs esporádicos)
+                <strong className="text-orange-600 dark:text-orange-400">🎲 Imprevisível:</strong> Alta qualidade + Baixa consistência (TOPs esporádicos)
               </div>
             </div>
           </div>

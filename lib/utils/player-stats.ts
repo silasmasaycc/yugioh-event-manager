@@ -99,69 +99,83 @@ export function calculatePlayerScore(player: PlayerStats): number {
 /**
  * Ordena jogadores por performance usando critérios de desempate equilibrados
  * 
- * Critérios aplicados em ordem:
+ * Para jogadores COM TOPs (1º ao 4º lugar):
  * 1. Sistema de Pontos (1º=4pts, 2º=3pts, 3º/4º=2pts)
  * 2. Quantidade de TOPs (colocações de destaque)
  * 3. Porcentagem de desempenho do jogador
  * 4. Qualidade das colocações (1º lugar > 2º lugar > 3º lugar > 4º lugar)
- * 5. Número de participações (para jogadores sem TOPs)
- * 6. Nome (ordem alfabética - desempate final)
+ * 5. Menor quantidade de Double Loss (penalidades)
  * 
  * Para jogadores SEM TOPs:
- * - São ordenados por número de participações (maior = mais dedicado)
- * - Em caso de empate, ordem alfabética
+ * 6. Número de participações (maior = mais dedicado)
+ * 7. Ordem alfabética (desempate final)
+ * 
+ * IMPORTANTE: Jogadores com TOPs sempre ficam acima de jogadores sem TOPs
  * 
  * @param playerA - Primeiro jogador para comparação
  * @param playerB - Segundo jogador para comparação
  * @returns Número negativo se A > B, positivo se B > A, 0 se iguais
  */
-export function sortPlayersByPerformance(playerA: PlayerStats, playerB: PlayerStats): number {
-  // Critério 1: Sistema de Pontos
-  const scoreA = calculatePlayerScore(playerA)
-  const scoreB = calculatePlayerScore(playerB)
-  
-  if (scoreB !== scoreA) {
-    return scoreB - scoreA
+export function sortPlayersByPerformance(playerA: PlayerStats & { penalties?: number }, playerB: PlayerStats & { penalties?: number }): number {
+  const hasTopsA = playerA.totalTops > 0
+  const hasTopsB = playerB.totalTops > 0
+
+  // Se um tem TOPs e o outro não, quem tem TOPs vem primeiro
+  if (hasTopsA && !hasTopsB) return -1
+  if (!hasTopsA && hasTopsB) return 1
+
+  // Se AMBOS têm TOPs, aplicar critérios 1-5
+  if (hasTopsA && hasTopsB) {
+    // Critério 1: Sistema de Pontos
+    const scoreA = calculatePlayerScore(playerA)
+    const scoreB = calculatePlayerScore(playerB)
+    
+    if (scoreB !== scoreA) {
+      return scoreB - scoreA
+    }
+
+    // Critério 2: Quantidade de TOPs (colocações de destaque)
+    if (playerB.totalTops !== playerA.totalTops) {
+      return playerB.totalTops - playerA.totalTops
+    }
+    
+    // Critério 3: Porcentagem de desempenho (maior % = melhor)
+    if (playerA.topPercentage !== playerB.topPercentage) {
+      return playerB.topPercentage - playerA.topPercentage
+    }
+
+    // Critério 4: Qualidade das colocações (1º > 2º > 3º > 4º)
+    if (playerB.firstPlace !== playerA.firstPlace) {
+      return playerB.firstPlace - playerA.firstPlace
+    }
+    
+    if (playerB.secondPlace !== playerA.secondPlace) {
+      return playerB.secondPlace - playerA.secondPlace
+    }
+    
+    if (playerB.thirdPlace !== playerA.thirdPlace) {
+      return playerB.thirdPlace - playerA.thirdPlace
+    }
+    
+    if (playerB.fourthPlace !== playerA.fourthPlace) {
+      return playerB.fourthPlace - playerA.fourthPlace
+    }
+
+    // Critério 5: Menor quantidade de Double Loss (penalidades)
+    const penaltiesA = playerA.penalties || 0
+    const penaltiesB = playerB.penalties || 0
+    if (penaltiesA !== penaltiesB) {
+      return penaltiesA - penaltiesB // Ordem crescente (menos é melhor)
+    }
   }
 
-  // Critério 2: Quantidade de TOPs (colocações de destaque)
-  if (playerB.totalTops !== playerA.totalTops) {
-    return playerB.totalTops - playerA.totalTops
-  }
-  
-  // Critério 3: Porcentagem de desempenho (maior % = melhor)
-  if (playerA.topPercentage !== playerB.topPercentage) {
-    return playerB.topPercentage - playerA.topPercentage
-  }
-
-  // Critério 4: Qualidade das colocações (1º > 2º > 3º > 4º)
-  // Compara primeiro lugares
-  if (playerB.firstPlace !== playerA.firstPlace) {
-    return playerB.firstPlace - playerA.firstPlace
-  }
-  
-  // Compara segundos lugares
-  if (playerB.secondPlace !== playerA.secondPlace) {
-    return playerB.secondPlace - playerA.secondPlace
-  }
-  
-  // Compara terceiros lugares
-  if (playerB.thirdPlace !== playerA.thirdPlace) {
-    return playerB.thirdPlace - playerA.thirdPlace
-  }
-  
-  // Compara quartos lugares
-  if (playerB.fourthPlace !== playerA.fourthPlace) {
-    return playerB.fourthPlace - playerA.fourthPlace
-  }
-
-  // Critério 5: Número de participações (para jogadores sem TOPs ou empate)
-  // Jogadores com mais participações mostram mais dedicação
+  // Se NENHUM tem TOPs, aplicar critérios 6-7
+  // Critério 6: Número de participações (maior = mais dedicado)
   if (playerB.totalTournaments !== playerA.totalTournaments) {
     return playerB.totalTournaments - playerA.totalTournaments
   }
 
-  // Critério 6: Ordem alfabética (desempate final)
+  // Critério 7: Ordem alfabética (desempate final)
   return playerA.name.localeCompare(playerB.name)
 }
 

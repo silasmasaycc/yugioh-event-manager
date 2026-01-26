@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createClient } from '@/lib/supabase/client'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PlayerProfileChart, PerformanceChart, TopsEvolutionChart, StreaksChart, ImprovementChart } from '@/components/stats'
 import { ERROR_MESSAGES } from '@/lib/constants/messages'
 import { logger } from '@/lib/utils/logger'
 import { generateColors, formatDateLong } from '@/lib/utils'
+import { sortPlayersByPerformance } from '@/lib/utils/player-stats'
 import { 
   TOP_POSITIONS, 
   FIRST_PLACE,
@@ -18,19 +20,21 @@ import {
   THIRD_PLACE,
   FOURTH_PLACE
 } from '@/lib/constants'
+import type { PlayerStats } from '@/lib/types'
 
-interface PlayerStats {
-  name: string
+interface PlayerStatsExtended extends PlayerStats {
   participations: number
-  tops: number
-  topPercentage: number
-  firstPlace?: number
-  secondPlace?: number
-  thirdPlace?: number
-  fourthPlace?: number
   points?: number
   currentStreak?: number
   bestStreak?: number
+}
+
+interface TournamentResultForChart {
+  date: string
+  tournamentId: number
+  playerId: number
+  playerName: string
+  placement: number | null
 }
 
 interface PlacementDistribution {
@@ -41,23 +45,17 @@ interface PlacementDistribution {
   '4º Lugar': number
 }
 
-interface TournamentResult {
-  date: string
-  tournamentId: number
-  playerId: number
-  playerName: string
-  placement: number | null
-}
-
 export default function StatsPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [appliedStartDate, setAppliedStartDate] = useState('')
   const [appliedEndDate, setAppliedEndDate] = useState('')
+  const [tournamentType, setTournamentType] = useState<'all' | 'regular' | 'beginner'>('regular')
+  const [appliedTournamentType, setAppliedTournamentType] = useState<'all' | 'regular' | 'beginner'>('regular')
   const [loading, setLoading] = useState(true)
-  const [mostParticipations, setMostParticipations] = useState<PlayerStats[]>([])
-  const [topsEvolutionData, setTopsEvolutionData] = useState<{ tournaments: any[], results: TournamentResult[], topPlayers: string[] }>({ tournaments: [], results: [], topPlayers: [] })
-  const [bestPerformance, setBestPerformance] = useState<PlayerStats[]>([])
+  const [mostParticipations, setMostParticipations] = useState<PlayerStatsExtended[]>([])
+  const [topsEvolutionData, setTopsEvolutionData] = useState<{ tournaments: any[], results: TournamentResultForChart[], topPlayers: string[] }>({ tournaments: [], results: [], topPlayers: [] })
+  const [bestPerformance, setBestPerformance] = useState<PlayerStatsExtended[]>([])
   const [placementDistribution, setPlacementDistribution] = useState<PlacementDistribution[]>([])
   const [totalTournaments, setTotalTournaments] = useState(0)
   const [filteredTournaments, setFilteredTournaments] = useState(0)
@@ -67,14 +65,26 @@ export default function StatsPage() {
   const loadStats = useCallback(async () => {
     setLoading(true)
     try {
-      // Buscar total de torneios (sem filtro)
-      const { count: total } = await supabase
-        .from('tournaments')
-        .select('*', { count: 'exact', head: true })
+      // Buscar total de torneios baseado no tipo selecionado
+      let totalQuery = supabase.from('tournaments').select('*', { count: 'exact', head: true })
       
+      if (appliedTournamentType === 'regular') {
+        totalQuery = totalQuery.neq('tournament_type', 'beginner')
+      } else if (appliedTournamentType === 'beginner') {
+        totalQuery = totalQuery.eq('tournament_type', 'beginner')
+      }
+      
+      const { count: total } = await totalQuery
       setTotalTournaments(total || 0)
 
-      let tournamentQuery = supabase.from('tournaments').select('id, date')
+      let tournamentQuery = supabase.from('tournaments').select('id, date, tournament_type')
+      
+      // Filtrar por tipo de torneio
+      if (appliedTournamentType === 'regular') {
+        tournamentQuery = tournamentQuery.neq('tournament_type', 'beginner')
+      } else if (appliedTournamentType === 'beginner') {
+        tournamentQuery = tournamentQuery.eq('tournament_type', 'beginner')
+      }
       
       if (appliedStartDate) {
         tournamentQuery = tournamentQuery.gte('date', appliedStartDate)
@@ -117,7 +127,7 @@ export default function StatsPage() {
       }
 
       // Calcular estatísticas por jogador
-      const playerStatsMap = new Map<number, PlayerStats>()
+      const playerStatsMap = new Map<number, PlayerStatsExtended>()
 
       players.forEach(player => {
         const playerResults = results.filter((result: any) => result.player?.id === player.id)
@@ -134,33 +144,33 @@ export default function StatsPage() {
         // Calcular pontos
         const points = firstPlace * 4 + secondPlace * 3 + thirdPlace * 2 + fourthPlace * 2
 
-        // Calcular streaks
-        const sortedResults = playerResults
-          .filter((result: any) => result.placement !== null && result.placement <= TOP_POSITIONS)
-          .sort((a: any, b: any) => {
-            const dateA = tournaments.find(t => t.id === a.tournament_id)?.date || ''
-            const dateB = tournaments.find(t => t.id === b.tournament_id)?.date || ''
-            return dateA.localeCompare(dateB)
-          })
+        // Calcular streaks de forma correta: verificar torneios consecutivos
+        // Ordenar TODOS os resultados do jogador por data
+        const allResultsSorted = playerResults
+          .map((result: any) => ({
+            ...result,
+            date: tournaments.find(t => t.id === result.tournament_id)?.date || ''
+          }))
+          .sort((a: any, b: any) => a.date.localeCompare(b.date))
 
         let currentStreak = 0
         let bestStreak = 0
         let tempStreak = 0
 
-        sortedResults.forEach(() => {
-          tempStreak++
-          if (tempStreak > bestStreak) {
-            bestStreak = tempStreak
+        // Percorrer todos os torneios para encontrar sequências consecutivas
+        allResultsSorted.forEach((result: any) => {
+          if (result.placement !== null && result.placement <= TOP_POSITIONS) {
+            tempStreak++
+            if (tempStreak > bestStreak) {
+              bestStreak = tempStreak
+            }
+          } else {
+            tempStreak = 0 // Resetar ao encontrar um torneio sem TOP
           }
         })
 
-        // Para streak atual, verificar os últimos torneios
-        const recentResults = playerResults
-          .sort((a: any, b: any) => {
-            const dateA = tournaments.find(t => t.id === a.tournament_id)?.date || ''
-            const dateB = tournaments.find(t => t.id === b.tournament_id)?.date || ''
-            return dateB.localeCompare(dateA)
-          })
+        // Para streak atual, verificar os últimos torneios do mais recente para o mais antigo
+        const recentResults = [...allResultsSorted].reverse()
 
         for (const result of recentResults) {
           if (result.placement !== null && result.placement <= TOP_POSITIONS) {
@@ -172,9 +182,12 @@ export default function StatsPage() {
 
         if (participations > 0) {
           playerStatsMap.set(player.id, {
+            id: player.id,
             name: player.name,
+            image_url: null,
+            totalTournaments: participations,
             participations,
-            tops,
+            totalTops: tops,
             topPercentage,
             firstPlace,
             secondPlace,
@@ -197,10 +210,10 @@ export default function StatsPage() {
 
       // Top jogadores com mais TOPs (para gráfico de evolução temporal)
       const topByTops = [...allPlayerStats]
-        .sort((playerA, playerB) => playerB.tops - playerA.tops)
+        .sort((playerA, playerB) => playerB.totalTops - playerA.totalTops)
       
       // Preparar dados para evolução temporal
-      const tournamentResults: TournamentResult[] = results.map((result: any) => ({
+      const tournamentResults: TournamentResultForChart[] = results.map((result: any) => ({
         date: tournaments.find(t => t.id === result.tournament_id)?.date || '',
         tournamentId: result.tournament_id,
         playerId: result.player?.id || 0,
@@ -214,10 +227,11 @@ export default function StatsPage() {
         topPlayers: topByTops.map(p => p.name)
       })
 
-      // Top jogadores com melhor % de TOPs (mínimo 1 TOP)
+      // Top jogadores com melhor % de TOPs (mínimo 1 TOP e 2 torneios)
+      // Ordenados pela mesma lógica do ranking
       const topByPercentage = [...allPlayerStats]
-        .filter(player => player.tops > 0)
-        .sort((playerA, playerB) => playerB.topPercentage - playerA.topPercentage)
+        .filter(player => player.totalTops > 0 && player.participations >= 2)
+        .sort(sortPlayersByPerformance)
       
       setBestPerformance(topByPercentage)
 
@@ -225,7 +239,7 @@ export default function StatsPage() {
       const placementMap = new Map<number, PlacementDistribution>()
       
       topByTops
-        .filter(player => player.tops > 0) // Filtrar apenas jogadores com TOPs
+        .filter(player => player.totalTops > 0) // Filtrar apenas jogadores com TOPs
         .forEach(player => {
           const playerData = players.find(currentPlayer => currentPlayer.name === player.name)
           if (playerData) {
@@ -247,7 +261,7 @@ export default function StatsPage() {
       logger.error(ERROR_MESSAGES.LOAD_STATS_ERROR, error)
     }
     setLoading(false)
-  }, [supabase, appliedStartDate, appliedEndDate])
+  }, [supabase, appliedStartDate, appliedEndDate, appliedTournamentType])
 
   useEffect(() => {
     loadStats()
@@ -256,6 +270,7 @@ export default function StatsPage() {
   const handleFilter = () => {
     setAppliedStartDate(startDate)
     setAppliedEndDate(endDate)
+    setAppliedTournamentType(tournamentType)
   }
 
   const handleClearFilter = () => {
@@ -263,9 +278,11 @@ export default function StatsPage() {
     setEndDate('')
     setAppliedStartDate('')
     setAppliedEndDate('')
+    setTournamentType('regular')
+    setAppliedTournamentType('regular')
   }
 
-  const isFiltered = appliedStartDate !== '' || appliedEndDate !== ''
+  const isFiltered = appliedStartDate !== '' || appliedEndDate !== '' || appliedTournamentType !== 'all'
 
   return (
     <PageLayout activeRoute="/stats">
@@ -279,10 +296,23 @@ export default function StatsPage() {
       {/* Filtros */}
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Filtros por Período</CardTitle>
+          <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="tournamentType">Tipo de Torneio</Label>
+              <Select value={tournamentType} onValueChange={(value: any) => setTournamentType(value)}>
+                <SelectTrigger id="tournamentType">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="regular">🏆 Veteranos</SelectItem>
+                  <SelectItem value="beginner">🆕 Novatos</SelectItem>
+                  <SelectItem value="all">📊 Todos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="startDate">Data Inicial</Label>
               <Input
@@ -318,6 +348,19 @@ export default function StatsPage() {
               </Button>
             </div>
           </div>
+          
+          {/* Indicador de tipo de torneio */}
+          {appliedTournamentType !== 'all' && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                {appliedTournamentType === 'regular' ? (
+                  <>🏆 <strong>Visualizando:</strong> Apenas torneios de veteranos (exclui torneios de novatos)</>
+                ) : (
+                  <>🆕 <strong>Visualizando:</strong> Apenas torneios de novatos</>
+                )}
+              </p>
+            </div>
+          )}
           
           {/* Badge de status do filtro */}
           {!loading && (
@@ -357,7 +400,7 @@ export default function StatsPage() {
             data={bestPerformance.map(p => ({
               name: p.name,
               participations: p.participations,
-              tops: p.tops,
+              tops: p.totalTops,
               topPercentage: p.topPercentage,
               firstPlace: p.firstPlace ?? 0,
               secondPlace: p.secondPlace ?? 0,
@@ -400,7 +443,12 @@ export default function StatsPage() {
             totalCount={totalTournaments}
           />
           <PerformanceChart 
-            data={bestPerformance} 
+            data={bestPerformance.map(p => ({
+              name: p.name,
+              topPercentage: p.topPercentage,
+              tops: p.totalTops,
+              participations: p.participations
+            }))} 
             colors={generateColors(bestPerformance.map(p => p.name))} 
             isFiltered={isFiltered}
             filteredCount={filteredTournaments}

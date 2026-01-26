@@ -25,6 +25,7 @@ export interface TournamentResult {
 export interface Penalty {
   id: string
   player_id: number
+  penalty_type?: string
   created_at: string
 }
 
@@ -48,6 +49,32 @@ export interface PenaltyPlayerStats {
   totalPenalties: number
   totalTournaments: number
   penaltyRate: number
+}
+
+// Tipos para tier system
+export interface TierSlots {
+  S: number
+  A: number
+  B: number
+}
+
+export interface PlayerWithStatsAndTier extends PlayerStats {
+  points: number
+  tier: string | null
+  penalties: number
+}
+
+export interface TierCalculatorResult {
+  tierSlots: TierSlots
+  avgPoints: number
+  playersWithTiers: PlayerWithStatsAndTier[]
+  tierGroups: {
+    S: PlayerWithStatsAndTier[]
+    A: PlayerWithStatsAndTier[]
+    B: PlayerWithStatsAndTier[]
+    C: PlayerWithStatsAndTier[]
+    D: PlayerWithStatsAndTier[]
+  }
 }
 
 // Tipos compostos do Supabase com relações

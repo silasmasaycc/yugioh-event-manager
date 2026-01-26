@@ -77,6 +77,7 @@ export async function createTournament(data: {
   name: string
   date: string
   player_count: number
+  tournament_type?: string
   results: Array<{ player_id: number; placement: number | null }>
 }) {
   const supabase = await createClient()
@@ -87,7 +88,8 @@ export async function createTournament(data: {
     .insert([{
       name: data.name,
       date: data.date,
-      player_count: data.player_count
+      player_count: data.player_count,
+      tournament_type: data.tournament_type || 'regular'
     }])
     .select()
     .single()
@@ -131,6 +133,7 @@ export async function updateTournament(
     name: string
     date: string
     player_count: number
+    tournament_type?: string
     results: Array<{ player_id: number; placement: number | null }>
   }
 ) {
@@ -142,7 +145,8 @@ export async function updateTournament(
     .update({
       name: data.name,
       date: data.date,
-      player_count: data.player_count
+      player_count: data.player_count,
+      tournament_type: data.tournament_type || 'regular'
     })
     .eq('id', id)
     .select()
@@ -210,12 +214,12 @@ export async function deleteTournament(id: number) {
 
 // ============= PENALTIES =============
 
-export async function addPenalty(data: { player_id: number }) {
+export async function addPenalty(data: { player_id: number; penalty_type: string }) {
   const supabase = await createClient()
   
   const { data: penalty, error } = await supabase
     .from('penalties')
-    .insert([{ player_id: data.player_id }])
+    .insert([{ player_id: data.player_id, penalty_type: data.penalty_type }])
     .select()
     .single()
 
@@ -225,6 +229,8 @@ export async function addPenalty(data: { player_id: number }) {
 
   // Revalidar páginas que mostram penalidades
   revalidatePath('/players')
+  revalidatePath('/ranking')
+  revalidatePath('/ranking/beginners')
   revalidatePath('/stats')
 
   return { success: true, data: penalty }

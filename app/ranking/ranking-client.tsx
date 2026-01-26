@@ -1,13 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { PageLayout } from '@/components/layout/page-layout'
 import { BestPlayersRanking } from './best-players-ranking'
 import { PenaltyRanking } from './penalty-ranking'
-import { Info, Trophy, Award, TrendingUp, Users, Download, Loader2, List } from 'lucide-react'
+import { Info, Trophy, Award, Download, Loader2, List, ArrowRight } from 'lucide-react'
 import { MEDAL_ICONS } from '@/lib/constants'
 import { exportRankingAsImage, exportTierListAsImage } from '@/lib/export-utils'
 
@@ -16,9 +17,10 @@ interface RankingClientProps {
   penaltyStats: any[]
   tierSlots: { S: number; A: number; B: number }
   avgPoints: number
+  isBeginnerRanking?: boolean
 }
 
-export function RankingClient({ players, penaltyStats }: RankingClientProps) {
+export function RankingClient({ players, penaltyStats, isBeginnerRanking = false }: RankingClientProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [isExportingTiers, setIsExportingTiers] = useState(false)
 
@@ -93,22 +95,50 @@ export function RankingClient({ players, penaltyStats }: RankingClientProps) {
   }
 
   return (
-    <PageLayout activeRoute="/ranking">
+    <PageLayout activeRoute="/ranking">      
       <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-2">Rankings</h2>
-            <p className="text-gray-600 dark:text-gray-300">
-              Classificações e estatísticas dos jogadores
-            </p>
+        <div className="flex flex-col gap-4">
+          {/* Header com título e botão de alternar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-3 mb-3">
+                <span className="text-4xl">{isBeginnerRanking ? '🆕' : '🏆'}</span>
+                <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent pb-1">
+                  {isBeginnerRanking ? 'Ranking de Novatos' : 'Ranking Veteranos'}
+                </h1>
+              </div>
+              <p className="text-base text-gray-600 dark:text-gray-300">
+                {isBeginnerRanking 
+                  ? 'Classificações dos torneios para jogadores iniciantes'
+                  : 'Classificações e estatísticas dos jogadores veteranos'
+                }
+              </p>
+            </div>
+            
+            {/* Botão de alternar ranking - destaque */}
+            <Link href={isBeginnerRanking ? '/ranking' : '/ranking/beginners'} className="shrink-0">
+              <Button 
+                size="lg"
+                className={`gap-2 w-full sm:w-auto ${
+                  isBeginnerRanking 
+                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700' 
+                    : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
+                }`}
+              >
+                {isBeginnerRanking ? '🏆 Ver Ranking Veteranos' : '🆕 Ver Ranking Novatos'}
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </Link>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+
+          {/* Botões de exportação */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
             <Button
               onClick={handleExportTiers}
               disabled={isExportingTiers}
               variant="outline"
-              className="gap-2 w-full sm:w-auto"
-              size="lg"
+              className="gap-2"
+              size="default"
             >
               {isExportingTiers ? (
                 <>
@@ -118,16 +148,16 @@ export function RankingClient({ players, penaltyStats }: RankingClientProps) {
               ) : (
                 <>
                   <List className="h-4 w-4" />
-                  <span className="hidden sm:inline">Exportar Tiers</span>
-                  <span className="sm:hidden">Tiers</span>
+                  Exportar Tiers
                 </>
               )}
             </Button>
             <Button
               onClick={handleExport}
               disabled={isExporting}
-              className="gap-2 w-full sm:w-auto"
-              size="lg"
+              variant="outline"
+              className="gap-2"
+              size="default"
             >
               {isExporting ? (
                 <>
@@ -137,8 +167,7 @@ export function RankingClient({ players, penaltyStats }: RankingClientProps) {
               ) : (
                 <>
                   <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">Exportar Ranking</span>
-                  <span className="sm:hidden">Ranking</span>
+                  Exportar Ranking
                 </>
               )}
             </Button>
@@ -211,15 +240,19 @@ export function RankingClient({ players, penaltyStats }: RankingClientProps) {
                       <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-sm font-bold text-purple-700 dark:text-purple-300">4</span>
                       <span className="text-sm leading-relaxed">Qualidade das colocações</span>
                     </div>
+                    <div className="flex gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-sm font-bold text-purple-700 dark:text-purple-300">5</span>
+                      <span className="text-sm leading-relaxed">Menor quantidade de Double Loss</span>
+                    </div>
                     <div className="pt-2 border-t dark:border-gray-700">
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Para jogadores sem TOPs:</p>
                       <div className="space-y-2">
                         <div className="flex gap-3">
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-400">5</span>
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-400">6</span>
                           <span className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">Participações</span>
                         </div>
                         <div className="flex gap-3">
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-400">6</span>
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-400">7</span>
                           <span className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">Ordem alfabética</span>
                         </div>
                       </div>

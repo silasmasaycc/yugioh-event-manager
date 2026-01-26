@@ -14,6 +14,7 @@ interface TournamentCardProps {
     date: string
     player_count: number
     location?: string
+    tournament_type?: string
     tournament_results: Array<{
       placement: number | null
       player: {
@@ -23,9 +24,10 @@ interface TournamentCardProps {
       } | null
     }>
   }
+  actions?: React.ReactNode // Botões de ação opcionais (editar/excluir)
 }
 
-export function TournamentCard({ tournament }: TournamentCardProps) {
+export function TournamentCard({ tournament, actions }: TournamentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   // Ordenar resultados por placement e pegar top 4
@@ -43,7 +45,25 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader>
         <div>
-          <CardTitle className="text-2xl mb-2">{tournament.name}</CardTitle>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <CardTitle className="text-2xl">{tournament.name}</CardTitle>
+            <div className="flex items-center gap-2">
+              {/* Badge de tipo de torneio */}
+              {tournament.tournament_type === 'beginner' ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium border border-blue-200 dark:border-blue-800 whitespace-nowrap">
+                  <span>🆕</span>
+                  <span className="hidden sm:inline">Novatos</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-medium border border-amber-200 dark:border-amber-800 whitespace-nowrap">
+                  <span>🏆</span>
+                  <span className="hidden sm:inline">Veteranos</span>
+                </div>
+              )}
+              {/* Botões de ação (se fornecidos) */}
+              {actions}
+            </div>
+          </div>
           <CardDescription className="flex flex-col gap-2">
             <span className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />

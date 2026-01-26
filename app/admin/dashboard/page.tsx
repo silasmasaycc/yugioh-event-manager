@@ -5,17 +5,17 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Trophy, LogOut, Plus, Edit, Trash2, Upload, AlertTriangle } from 'lucide-react'
+import { Trophy, LogOut, Plus, Edit, Trash2, Upload, AlertTriangle, Minus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth, useUserRole } from '@/lib/hooks/use-auth'
 import { toast } from 'sonner'
-import { formatDate } from '@/lib/utils'
 import { MEDAL_ICONS } from '@/lib/constants'
+import { TournamentCard } from '@/components/tournaments/tournament-card'
 import { 
   createPlayer, 
   updatePlayer, 
@@ -40,6 +40,16 @@ export default function AdminDashboard() {
   const [editingPlayer, setEditingPlayer] = useState<any>(null)
   const [editingTournament, setEditingTournament] = useState<any>(null)
 
+  // Penalty dialog
+  const [showPenaltyDialog, setShowPenaltyDialog] = useState(false)
+  const [penaltyPlayerId, setPenaltyPlayerId] = useState<number | null>(null)
+  const [penaltyTournamentType, setPenaltyTournamentType] = useState('')
+  
+  // Remove penalty dialog
+  const [showRemovePenaltyDialog, setShowRemovePenaltyDialog] = useState(false)
+  const [removePenaltyPlayerId, setRemovePenaltyPlayerId] = useState<number | null>(null)
+  const [removePenaltyType, setRemovePenaltyType] = useState('')
+
   // Player form
   const [playerName, setPlayerName] = useState('')
   const [playerImageUrl, setPlayerImageUrl] = useState('')
@@ -49,6 +59,7 @@ export default function AdminDashboard() {
   const [tournamentName, setTournamentName] = useState('')
   const [tournamentDate, setTournamentDate] = useState('')
   const [tournamentPlayerCount, setTournamentPlayerCount] = useState('')
+  const [tournamentType, setTournamentType] = useState('regular')
   const [firstPlace, setFirstPlace] = useState('')
   const [secondPlace, setSecondPlace] = useState('')
   const [thirdPlace, setThirdPlace] = useState('')
@@ -222,6 +233,7 @@ export default function AdminDashboard() {
         name: tournamentName,
         date: tournamentDate,
         player_count: parseInt(tournamentPlayerCount),
+        tournament_type: tournamentType,
         results
       }
 
@@ -287,25 +299,64 @@ export default function AdminDashboard() {
     setImageFile(null)
   }
 
-  const handleDeletePenalty = async (id: string) => {
-    if (!isAdmin) {
-      toast.error('Apenas administradores podem excluir penalidades')
+  const handleRemovePenalty = async () => {
+    if (!removePenaltyPlayerId || !removePenaltyType) {
+      toast.error('Selecione o tipo de torneio')
       return
     }
 
-    if (!confirm('Tem certeza que deseja remover esta penalidade?')) return
-
     try {
-      const result = await deletePenalty(id)
+      // Filtrar penalties do jogador por tipo
+      const playerPenalties = penalties.filter(p => 
+        p.player?.id === removePenaltyPlayerId &&
+        p.penalty_type === removePenaltyType
+      )
+
+      if (playerPenalties.length === 0) {
+        toast.error(`Nenhum double loss de ${removePenaltyType === 'beginner' ? 'novatos' : 'veteranos'} encontrado`)
+        return
+      }
+
+      // Remover a penalty mais recente daquele tipo
+      const result = await deletePenalty(playerPenalties[0].id)
       
       if (!result.success) {
         throw new Error(result.error)
       }
 
-      toast.success('Penalidade removida com sucesso!')
+      toast.success('Double Loss removido!')
+      setShowRemovePenaltyDialog(false)
+      setRemovePenaltyPlayerId(null)
+      setRemovePenaltyType('')
       loadData()
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao excluir penalidade')
+      toast.error(error.message || 'Erro ao remover penalidade')
+    }
+  }
+
+  const handleAddPenalty = async () => {
+    if (!penaltyPlayerId || !penaltyTournamentType) {
+      toast.error('Selecione o tipo de torneio')
+      return
+    }
+
+    try {
+      const result = await addPenalty({
+        player_id: penaltyPlayerId,
+        penalty_type: penaltyTournamentType
+      })
+      
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      toast.success('Double Loss adicionado!')
+      setShowPenaltyDialog(false)
+      setPenaltyPlayerId(null)
+      setPenaltyTournamentType('')
+      loadData()
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao adicionar penalidade')
     }
   }
 
@@ -315,6 +366,7 @@ export default function AdminDashboard() {
     setTournamentName('')
     setTournamentDate('')
     setTournamentPlayerCount('')
+    setTournamentType('regular')
     setFirstPlace('')
     setSecondPlace('')
     setThirdPlace('')
@@ -342,6 +394,7 @@ export default function AdminDashboard() {
     setTournamentName(tournament.name)
     setTournamentDate(tournament.date)
     setTournamentPlayerCount(tournament.player_count.toString())
+    setTournamentType(tournament.tournament_type || 'regular')
     
     // Load existing results
     const results = tournament.tournament_results || []
@@ -474,6 +527,9 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {players.map((player) => {
                 const playerPenalties = penalties.filter(p => p.player?.id === player.id)
+                const veteranPenalties = playerPenalties.filter(p => p.penalty_type !== 'beginner')
+                const beginnerPenalties = playerPenalties.filter(p => p.penalty_type === 'beginner')
+                
                 return (
                 <Card key={player.id}>
                   <CardContent className="p-4">
@@ -518,83 +574,109 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
-                    {/* Seção de Double Loss (separada) */}
+                    {/* Seção de Double Loss (separada por tipo) */}
                     {(playerPenalties.length > 0 || isAdmin) && (
-                      <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                        {playerPenalties.length > 0 ? (
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <AlertTriangle className="h-4 w-4 text-red-600" />
-                              <span className="text-sm text-red-600 font-semibold">
-                                {playerPenalties.length} Double Loss{playerPenalties.length > 1 ? 'es' : ''}
-                              </span>
+                      <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
+                        {/* Double Loss Veteranos */}
+                        {(veteranPenalties.length > 0 || isAdmin) && (
+                          <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">🏆</span>
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                  Veteranos
+                                </span>
+                              </div>
+                              <div className="bg-red-100 dark:bg-red-900/30 px-3 py-1 rounded-full">
+                                <span className="text-sm font-bold text-red-700 dark:text-red-400">
+                                  {veteranPenalties.length} DL
+                                </span>
+                              </div>
                             </div>
                             {isAdmin && (
-                              <div className="flex gap-1">
+                              <div className="flex gap-2">
+                                {veteranPenalties.length > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-950/20 border-green-300 dark:border-green-800"
+                                    onClick={() => {
+                                      setRemovePenaltyPlayerId(player.id)
+                                      setRemovePenaltyType('regular')
+                                      setShowRemovePenaltyDialog(true)
+                                    }}
+                                  >
+                                    <Minus className="h-4 w-4 text-green-600" />
+                                    <span className="text-xs font-medium text-green-700 dark:text-green-400">Remover</span>
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-6 px-3 text-xs font-semibold text-green-600 hover:text-green-700 hover:bg-green-50 border-green-400 hover:border-green-500"
+                                  className={`${veteranPenalties.length > 0 ? 'flex-1' : 'w-full'} h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-300 dark:border-red-800`}
                                   onClick={() => {
-                                    if (playerPenalties.length > 0) {
-                                      handleDeletePenalty(playerPenalties[0].id)
-                                    }
+                                    setPenaltyPlayerId(player.id)
+                                    setPenaltyTournamentType('regular')
+                                    setShowPenaltyDialog(true)
                                   }}
-                                  title="Remover 1 Double Loss"
                                 >
-                                  -1
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-3 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 border-red-400 hover:border-red-500"
-                                  onClick={async () => {
-                                    try {
-                                      const result = await addPenalty({
-                                        player_id: player.id
-                                      })
-                                      if (!result.success) {
-                                        throw new Error(result.error)
-                                      }
-                                      toast.success('Double Loss adicionado!')
-                                      loadData()
-                                    } catch (error: any) {
-                                      toast.error(error.message || 'Erro ao adicionar penalidade')
-                                    }
-                                  }}
-                                  title="Adicionar 1 Double Loss"
-                                >
-                                  +1
+                                  <Plus className="h-4 w-4 text-red-600" />
+                                  <span className="text-xs font-medium text-red-700 dark:text-red-400">Adicionar</span>
                                 </Button>
                               </div>
                             )}
                           </div>
-                        ) : (
-                          isAdmin && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="w-full h-8 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-300 hover:border-red-300"
-                              onClick={async () => {
-                                try {
-                                  const result = await addPenalty({
-                                    player_id: player.id
-                                  })
-                                  if (!result.success) {
-                                    throw new Error(result.error)
-                                  }
-                                  toast.success('Double Loss adicionado!')
-                                  loadData()
-                                } catch (error: any) {
-                                  toast.error(error.message || 'Erro ao adicionar penalidade')
-                                }
-                              }}
-                              title="Adicionar Double Loss"
-                            >
-                              <AlertTriangle className="h-3 w-3 mr-1" />
-                              Adicionar Double Loss
-                            </Button>
-                          )
+                        )}
+                        
+                        {/* Double Loss Novatos */}
+                        {(beginnerPenalties.length > 0 || isAdmin) && (
+                          <div className="bg-orange-50 dark:bg-orange-950/20 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">🆕</span>
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                  Novatos
+                                </span>
+                              </div>
+                              <div className="bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-full">
+                                <span className="text-sm font-bold text-orange-700 dark:text-orange-400">
+                                  {beginnerPenalties.length} DL
+                                </span>
+                              </div>
+                            </div>
+                            {isAdmin && (
+                              <div className="flex gap-2">
+                                {beginnerPenalties.length > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-950/20 border-green-300 dark:border-green-800"
+                                    onClick={() => {
+                                      setRemovePenaltyPlayerId(player.id)
+                                      setRemovePenaltyType('beginner')
+                                      setShowRemovePenaltyDialog(true)
+                                    }}
+                                  >
+                                    <Minus className="h-4 w-4 text-green-600" />
+                                    <span className="text-xs font-medium text-green-700 dark:text-green-400">Remover</span>
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className={`${beginnerPenalties.length > 0 ? 'flex-1' : 'w-full'} h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-950/20 border-orange-300 dark:border-orange-800`}
+                                  onClick={() => {
+                                    setPenaltyPlayerId(player.id)
+                                    setPenaltyTournamentType('beginner')
+                                    setShowPenaltyDialog(true)
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4 text-orange-600" />
+                                  <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Adicionar</span>
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}
@@ -660,6 +742,25 @@ export default function AdminDashboard() {
                         required
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tournamentType">Tipo de Torneio</Label>
+                    <Select value={tournamentType} onValueChange={setTournamentType}>
+                      <SelectTrigger id="tournamentType">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="regular">🏆 Veteranos (Ranking Principal)</SelectItem>
+                        <SelectItem value="beginner">🆕 Novatos (Iniciantes)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {tournamentType === 'beginner' 
+                        ? 'Torneios de novatos não afetam o ranking principal' 
+                        : 'Torneios de veteranos contam para o ranking principal'
+                      }
+                    </p>
                   </div>
 
                   <div className="border-t pt-4 mt-4">
@@ -778,86 +879,104 @@ export default function AdminDashboard() {
             </Dialog>
 
             <div className="space-y-4">
-              {tournaments.map((tournament) => {
-                // Filtrar apenas TOP 4 (placement 1-4)
-                const topResults = (tournament.tournament_results || [])
-                  .filter((r: any) => r.placement !== null && r.placement >= 1 && r.placement <= 4)
-                  .sort((a: any, b: any) => a.placement - b.placement)
-
-                return (
-                  <Card key={tournament.id}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <CardTitle>{tournament.name}</CardTitle>
-                          <CardDescription>
-                            {formatDate(tournament.date)} • {tournament.player_count} jogadores
-                            {tournament.location && ` • ${tournament.location}`}
-                          </CardDescription>
-                        </div>
-                        {isAdmin && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => startEditTournament(tournament)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDeleteTournament(tournament.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
+              {tournaments.map((tournament) => (
+                <TournamentCard
+                  key={tournament.id}
+                  tournament={tournament}
+                  actions={
+                    isAdmin ? (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => startEditTournament(tournament)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteTournament(tournament.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-
-                      {topResults.length > 0 && (
-                        <div className="mt-4 pt-4 border-t">
-                          <h4 className="text-sm font-semibold mb-3 text-gray-700">Classificação Final</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {topResults.map((result: any) => {
-                              return (
-                                <div
-                                  key={result.placement}
-                                  className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-                                >
-                                  <span className="text-2xl">{MEDAL_ICONS[result.placement as 1 | 2 | 3 | 4]}</span>
-                                  <div className="flex items-center gap-2 flex-1">
-                                    {result.player?.image_url ? (
-                                      <div className="relative h-8 w-8 rounded-full overflow-hidden">
-                                        <Image
-                                          src={result.player.image_url}
-                                          alt={result.player.name}
-                                          fill
-                                          className="object-cover"
-                                        />
-                                      </div>
-                                    ) : (
-                                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-xs font-bold text-purple-600">
-                                        {result.player?.name?.charAt(0).toUpperCase()}
-                                      </div>
-                                    )}
-                                    <span className="text-sm font-medium">{result.player?.name || 'N/A'}</span>
-                                  </div>
-                                  <span className="text-xs text-gray-500">{result.placement}º lugar</span>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </CardHeader>
-                  </Card>
-                )
-              })}
+                    ) : undefined
+                  }
+                />
+              ))}
             </div>
           </div>
         )}
       </main>
+
+      {/* Penalty Dialog */}
+      <Dialog open={showPenaltyDialog} onOpenChange={setShowPenaltyDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Double Loss</DialogTitle>
+            <DialogDescription>
+              Selecione o tipo de torneio em que o jogador recebeu o double loss
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="penaltyTournamentType">Tipo de Torneio *</Label>
+              <Select value={penaltyTournamentType} onValueChange={setPenaltyTournamentType}>
+                <SelectTrigger id="penaltyTournamentType">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="regular">🏆 Veteranos</SelectItem>
+                  <SelectItem value="beginner">🆕 Novatos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowPenaltyDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAddPenalty}>
+                Adicionar Double Loss
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Penalty Dialog */}
+      <Dialog open={showRemovePenaltyDialog} onOpenChange={setShowRemovePenaltyDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remover Double Loss</DialogTitle>
+            <DialogDescription>
+              Selecione o tipo de torneio do double loss que deseja remover
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="removePenaltyType">Tipo de Torneio *</Label>
+              <Select value={removePenaltyType} onValueChange={setRemovePenaltyType}>
+                <SelectTrigger id="removePenaltyType">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="regular">🏆 Veteranos</SelectItem>
+                  <SelectItem value="beginner">🆕 Novatos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowRemovePenaltyDialog(false)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleRemovePenalty}>
+                Remover Double Loss
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

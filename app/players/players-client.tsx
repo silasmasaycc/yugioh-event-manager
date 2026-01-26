@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useMemo } from 'react'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PlayerCard } from '@/components/player/player-card'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,99 +8,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { Search, Users, Award, TrendingUp, Filter, X } from 'lucide-react'
 import { LABELS } from '@/lib/constants/messages'
+import type { PlayerWithStatsAndTier, TierSlots } from '@/lib/types'
+import { getTierBadgeColor } from '@/lib/utils/tier-styles'
+import { usePlayerFilters } from '@/lib/hooks/use-player-filters'
 
 interface PlayersClientProps {
-  players: any[]
-  tierSlots: { S: number; A: number; B: number }
+  players: PlayerWithStatsAndTier[]
+  tierSlots: TierSlots
   avgPoints: number
 }
 
-export function PlayersClient({ players, tierSlots, avgPoints }: PlayersClientProps) {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [tierFilter, setTierFilter] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<string>('points')
-
-  // Calcular estatísticas
-  const stats = useMemo(() => {
-    const activePlayers = players.filter(p => p.totalTournaments > 0)
-    const playersWithPoints = players.filter(p => p.points > 0)
-    const averagePoints = playersWithPoints.length > 0
-      ? Math.round(playersWithPoints.reduce((sum, p) => sum + p.points, 0) / playersWithPoints.length)
-      : 0
-    
-    const tierCounts = {
-      S: players.filter(p => p.tier === 'S').length,
-      A: players.filter(p => p.tier === 'A').length,
-      B: players.filter(p => p.tier === 'B').length,
-      C: players.filter(p => p.tier === 'C').length,
-      D: players.filter(p => p.tier === 'D').length,
-    }
-
-    return {
-      total: players.length,
-      active: activePlayers.length,
-      avgPoints: averagePoints,
-      tierCounts
-    }
-  }, [players])
-
-  // Filtrar e ordenar jogadores
-  const filteredPlayers = useMemo(() => {
-    let filtered = players
-
-    // Filtro de busca
-    if (searchTerm) {
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    // Filtro de tier
-    if (tierFilter !== 'all') {
-      if (tierFilter === 'none') {
-        filtered = filtered.filter(p => p.tier === null)
-      } else {
-        filtered = filtered.filter(p => p.tier === tierFilter)
-      }
-    }
-
-    // Ordenação
-    filtered = [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case 'points':
-          return b.points - a.points
-        case 'tops':
-          return b.totalTops - a.totalTops
-        case 'name':
-          return a.name.localeCompare(b.name)
-        case 'participation':
-          return b.totalTournaments - a.totalTournaments
-        default:
-          return 0
-      }
-    })
-
-    return filtered
-  }, [players, searchTerm, tierFilter, sortBy])
-
-  const hasActiveFilters = searchTerm || tierFilter !== 'all' || sortBy !== 'points'
-
-  const clearFilters = () => {
-    setSearchTerm('')
-    setTierFilter('all')
-    setSortBy('points')
-  }
-
-  const getTierBadgeColor = (tier: string | null) => {
-    switch (tier) {
-      case 'S': return 'bg-red-500 text-white'
-      case 'A': return 'bg-yellow-500 text-white'
-      case 'B': return 'bg-green-500 text-white'
-      case 'C': return 'bg-blue-500 text-white'
-      case 'D': return 'bg-gray-500 text-white'
-      default: return 'bg-gray-300 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-    }
-  }
+export function PlayersClient({ players }: PlayersClientProps) {
+  const {
+    searchTerm,
+    setSearchTerm,
+    tierFilter,
+    setTierFilter,
+    sortBy,
+    setSortBy,
+    filteredPlayers,
+    stats,
+    hasActiveFilters,
+    clearFilters
+  } = usePlayerFilters(players)
 
   return (
     <PageLayout activeRoute="/players">

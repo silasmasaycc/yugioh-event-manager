@@ -2,9 +2,10 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { PlayerAvatar } from '@/components/player/player-avatar'
+import type { PenaltyPlayerStats } from '@/lib/types'
 
 interface PenaltyRankingProps {
-  penaltyStats: any[]
+  penaltyStats: PenaltyPlayerStats[]
 }
 
 export function PenaltyRanking({ penaltyStats }: PenaltyRankingProps) {

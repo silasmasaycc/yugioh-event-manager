@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trophy, Users, BarChart3, TrendingUp, Award } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/header'
-import { calculatePlayerStats, sortPlayersByPerformance } from '@/lib/utils/player-stats'
+import { filterAndProcessPlayers } from '@/lib/utils/process-players'
+import { calculateTiers } from '@/lib/utils/tier-calculator'
 import { PlayerAvatar } from '@/components/player/player-avatar'
 import { TournamentCard } from '@/components/tournaments/tournament-card'
 
@@ -12,6 +13,14 @@ export const revalidate = 3600 // 1 hora
 
 export default async function HomePage() {
   const supabase = await createClient()
+
+  // Buscar apenas torneios de veteranos (excluir torneios de novatos)
+  const { data: regularTournaments } = await supabase
+    .from('tournaments')
+    .select('id')
+    .neq('tournament_type', 'beginner')
+
+  const regularTournamentIds = regularTournaments?.map(t => t.id) || []
 
   // Get latest stats and top players
   const [
@@ -21,7 +30,7 @@ export default async function HomePage() {
     { data: allPlayers }
   ] = await Promise.all([
     supabase.from('players').select('*', { count: 'exact', head: true }),
-    supabase.from('tournaments').select('*', { count: 'exact', head: true }),
+    supabase.from('tournaments').select('*', { count: 'exact', head: true }).neq('tournament_type', 'beginner'),
     supabase
       .from('tournaments')
       .select(`
@@ -35,87 +44,23 @@ export default async function HomePage() {
           )
         )
       `)
+      .neq('tournament_type', 'beginner')
       .order('date', { ascending: false })
       .limit(2),
     supabase
       .from('players')
       .select(`
         *,
-        tournament_results(placement, tournament_id),
+        tournament_results(placement, tournament_id, tournaments(tournament_type)),
         penalties(player_id)
       `)
   ])
 
-  // Calculate all players with points and stats
-  const playersWithStats = allPlayers
-    ?.map(player => {
-      const stats = calculatePlayerStats(player, player.penalties || [])
-      const points = (stats.firstPlace * 4) + (stats.secondPlace * 3) + (stats.thirdPlace * 2) + (stats.fourthPlace * 2)
-      return { ...stats, points }
-    })
-    .sort(sortPlayersByPerformance) || []
+  // Processar jogadores filtrando apenas torneios de veteranos
+  const playersWithStats = filterAndProcessPlayers(allPlayers || [], regularTournamentIds)
 
-  // Classify players into tiers based on performance
-  const getTier = (player: any, index: number, total: number, avgPoints: number) => {
-    // Only players with at least 1 tournament can have a tier
-    if (player.totalTournaments < 1) return null
-    
-    // Calculate percentile position
-    const percentile = (index / total) * 100
-    
-    // S Tier: Elite - Top 10% with exceptional performance (≥51% TOP rate) and above average points
-    if (percentile < 10 && player.topPercentage >= 51 && player.points >= avgPoints) {
-      return 'S'
-    }
-    
-    // A Tier: Advanced - Top 30% with good performance (≥40% TOP rate) and points near/above average
-    if (percentile < 30 && player.topPercentage >= 40 && player.points >= avgPoints * 0.7) {
-      return 'A'
-    }
-    
-    // B Tier: Competitive - Top 60% with ≥50% of average points
-    if (percentile < 60 && player.points >= avgPoints * 0.5) {
-      return 'B'
-    }
-    
-    // C Tier: Emerging - Top 85% with active participation and ≥30% of average points
-    if (percentile < 85 && player.points >= avgPoints * 0.3) {
-      return 'C'
-    }
-    
-    // D Tier: Development - Remaining active players
-    return 'D'
-  }
-
-  // Calculate average points of top 10 players (more competitive benchmark)
-  const top10Players = playersWithStats.slice(0, 10).filter(p => p.points > 0)
-  const avgPoints = top10Players.length > 0 
-    ? Math.ceil(top10Players.reduce((sum, p) => sum + p.points, 0) / top10Players.length)
-    : 0
-
-  // Calculate tier slot counts based on eligible players (exclusive percentages)
-  const eligiblePlayersCount = playersWithStats.filter(p => p.totalTournaments >= 1).length
-  const tierSlots = {
-    S: Math.max(1, Math.floor(eligiblePlayersCount * 0.10)), // Top 10% (exclusive) - rounded down
-    A: Math.max(1, Math.floor(eligiblePlayersCount * 0.20)), // Next 20% (10% to 30%) - rounded down
-    B: Math.max(1, Math.floor(eligiblePlayersCount * 0.30))  // Next 30% (30% to 60%) - rounded down
-  }
-
-  // Classify players into tiers (only those with 1+ tournament)
-  const tiersList = playersWithStats
-    .map((player, index) => ({
-      ...player,
-      tier: getTier(player, index, playersWithStats.length, avgPoints)
-    }))
-    .filter(player => player.tier !== null) // Remove players without tier
-
-  const tierGroups = {
-    S: tiersList.filter(p => p.tier === 'S'),
-    A: tiersList.filter(p => p.tier === 'A'),
-    B: tiersList.filter(p => p.tier === 'B'),
-    C: tiersList.filter(p => p.tier === 'C'),
-    D: tiersList.filter(p => p.tier === 'D')
-  }
+  // Calcular tiers usando função utilitária
+  const { tierSlots, avgPoints, tierGroups } = calculateTiers(playersWithStats)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -169,7 +114,7 @@ export default async function HomePage() {
           <div className="text-center mb-8">
             <div className="inline-block mb-3 px-4 py-2 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 rounded-full border-2 border-purple-300 dark:border-purple-700">
               <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">
-                📊 {tiersList.length} {tiersList.length === 1 ? 'jogador ranqueado' : 'jogadores ranqueados'} em 5 tiers
+                📊 {Object.values(tierGroups).flat().length} {Object.values(tierGroups).flat().length === 1 ? 'jogador ranqueado' : 'jogadores ranqueados'} em 5 tiers
               </p>
             </div>
             <h3 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
@@ -200,7 +145,7 @@ export default async function HomePage() {
                   <div className="text-center">
                     <p className="text-xs text-purple-700 dark:text-purple-300 mb-1">Média Geral de Pontuação</p>
                     <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">{avgPoints} <span className="text-sm">pontos</span></p>
-                    <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">Calculada dos 10 melhores jogadores do ranking e arredondada para cima</p>
+                    <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">Calculada de todos os jogadores com TOPs e arredondada para cima</p>
                   </div>
                 </div>
 
@@ -220,8 +165,8 @@ export default async function HomePage() {
                   </div>
                   <div className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
                     <p>🎯 Até {tierSlots.S} {tierSlots.S === 1 ? 'vaga' : 'vagas'}</p>
-                    <p>🏆 ≥51% TOPs</p>
-                    <p>📈 ≥{avgPoints} pts</p>
+                    <p>🏆 ≥55% TOPs</p>
+                    <p>📈 ≥{Math.ceil(avgPoints * 1.75)} pts (175% média)</p>
                   </div>
                 </div>
                 <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 p-3 rounded-lg border-2 border-yellow-300 dark:border-yellow-700">
@@ -231,8 +176,8 @@ export default async function HomePage() {
                   </div>
                   <div className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
                     <p>🎯 Até {tierSlots.A} {tierSlots.A === 1 ? 'vaga' : 'vagas'}</p>
-                    <p>🏆 ≥40% TOPs</p>
-                    <p>📈 ≥{Math.ceil(avgPoints * 0.7)} pts</p>
+                    <p>🏆 ≥45% TOPs</p>
+                    <p>📈 ≥{Math.ceil(avgPoints * 1.25)} pts (125% média)</p>
                   </div>
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 p-3 rounded-lg border-2 border-green-300 dark:border-green-700">
@@ -242,7 +187,8 @@ export default async function HomePage() {
                   </div>
                   <div className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
                     <p>🎯 Até {tierSlots.B} {tierSlots.B === 1 ? 'vaga' : 'vagas'}</p>
-                    <p>📈 ≥{Math.ceil(avgPoints * 0.5)} pts</p>
+                    <p>🏆 ≥35% TOPs</p>
+                    <p>📈 ≥{Math.ceil(avgPoints * 0.85)} pts (85% média)</p>
                   </div>
                 </div>
                 <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 p-3 rounded-lg border-2 border-blue-300 dark:border-blue-700">
@@ -252,7 +198,7 @@ export default async function HomePage() {
                   </div>
                   <div className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
                     <p>� Jogadores emergentes</p>
-                    <p>📈 ≥{Math.ceil(avgPoints * 0.3)} pts</p>
+                    <p>📈 ≥{Math.ceil(avgPoints * 0.55)} pts (55% média)</p>
                   </div>
                 </div>
                 <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30 p-3 rounded-lg border-2 border-gray-300 dark:border-gray-600">
@@ -285,18 +231,21 @@ export default async function HomePage() {
                   </CardTitle>
                 </CardHeader>
                 <div className="mx-6 mb-4 p-3 bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 rounded">
-                  <div className="text-sm text-red-900 dark:text-red-200 flex flex-wrap gap-x-4 gap-y-1">
-                    <span className="font-semibold">🎯 Vagas: {tierGroups.S.length}/{tierSlots.S} {tierGroups.S.length >= tierSlots.S ? 'ocupadas' : 'disponíveis'}</span>
-                    <span>•</span>
-                    <span>🏆 ≥51% de TOPs</span>
-                    <span>•</span>
-                    <span>📈 ≥{avgPoints} pontos</span>
+                  <div className="text-sm text-red-900 dark:text-red-200">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
+                      <span className="font-semibold">🎯 Vagas: {tierGroups.S.length}/{tierSlots.S} {tierGroups.S.length >= tierSlots.S ? 'ocupadas' : 'disponíveis'}</span>
+                    </div>
+                    <div className="text-xs space-y-1 mt-2 border-t border-red-300 dark:border-red-700 pt-2">
+                      <div className="font-semibold mb-1">Critérios:</div>
+                      <div>✓ ≥55% de TOPs</div>
+                      <div>✓ ≥{Math.ceil(avgPoints * 1.75)} pontos (175% da média)</div>
+                    </div>
                   </div>
                 </div>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {tierGroups.S.map((player, index) => {
-                      const nextTierThreshold = Math.ceil(avgPoints * 0.7) // Tier A threshold
+                      const nextTierThreshold = Math.ceil(avgPoints * 1.25) // Tier A threshold
                       const pointsToA = Math.max(0, nextTierThreshold - player.points)
                       return (
                       <Card key={player.id} className="hover:shadow-lg transition-all border-red-200 dark:border-red-800">
@@ -352,19 +301,22 @@ export default async function HomePage() {
                   </CardTitle>
                 </CardHeader>
                 <div className="mx-6 mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500 rounded">
-                  <div className="text-sm text-yellow-900 dark:text-yellow-200 flex flex-wrap gap-x-4 gap-y-1">
-                    <span className="font-semibold">🎯 Vagas: {tierGroups.A.length}/{tierSlots.A} {tierGroups.A.length >= tierSlots.A ? 'ocupadas' : 'disponíveis'}</span>
-                    <span>•</span>
-                    <span>🏆 ≥40% de TOPs</span>
-                    <span>•</span>
-                    <span>📈 ≥{Math.ceil(avgPoints * 0.7)} pontos</span>
+                  <div className="text-sm text-yellow-900 dark:text-yellow-200">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
+                      <span className="font-semibold">🎯 Vagas: {tierGroups.A.length}/{tierSlots.A} {tierGroups.A.length >= tierSlots.A ? 'ocupadas' : 'disponíveis'}</span>
+                    </div>
+                    <div className="text-xs space-y-1 mt-2 border-t border-yellow-300 dark:border-yellow-700 pt-2">
+                      <div className="font-semibold mb-1">Critérios:</div>
+                      <div>✓ ≥45% de TOPs</div>
+                      <div>✓ ≥{Math.ceil(avgPoints * 1.25)} pontos (125% da média)</div>
+                    </div>
                   </div>
                 </div>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {tierGroups.A.map((player, index) => {
-                      const upperTierThreshold = avgPoints // Tier S threshold
-                      const lowerTierThreshold = Math.ceil(avgPoints * 0.5) // Tier B threshold
+                      const upperTierThreshold = Math.ceil(avgPoints * 1.75) // Tier S threshold
+                      const lowerTierThreshold = Math.ceil(avgPoints * 0.85) // Tier B threshold
                       const pointsToS = Math.max(0, upperTierThreshold - player.points)
                       const pointsToB = Math.max(0, player.points - lowerTierThreshold)
                       return (
@@ -426,17 +378,22 @@ export default async function HomePage() {
                   </CardTitle>
                 </CardHeader>
                 <div className="mx-6 mb-4 p-3 bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500 rounded">
-                  <div className="text-sm text-green-900 dark:text-green-200 flex flex-wrap gap-x-4 gap-y-1">
-                    <span className="font-semibold">🎯 Vagas: {tierGroups.B.length}/{tierSlots.B} {tierGroups.B.length >= tierSlots.B ? 'ocupadas' : 'disponíveis'}</span>
-                    <span>•</span>
-                    <span>📈 ≥{Math.ceil(avgPoints * 0.5)} pontos</span>
+                  <div className="text-sm text-green-900 dark:text-green-200">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
+                      <span className="font-semibold">🎯 Vagas: {tierGroups.B.length}/{tierSlots.B} {tierGroups.B.length >= tierSlots.B ? 'ocupadas' : 'disponíveis'}</span>
+                    </div>
+                    <div className="text-xs space-y-1 mt-2 border-t border-green-300 dark:border-green-700 pt-2">
+                      <div className="font-semibold mb-1">Critérios:</div>
+                      <div>✓ ≥35% de TOPs</div>
+                      <div>✓ ≥{Math.ceil(avgPoints * 0.85)} pontos (85% da média)</div>
+                    </div>
                   </div>
                 </div>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {tierGroups.B.map((player, index) => {
-                      const upperTierThreshold = Math.ceil(avgPoints * 0.7) // Tier A threshold
-                      const lowerTierThreshold = Math.ceil(avgPoints * 0.3) // Tier C threshold
+                      const upperTierThreshold = Math.ceil(avgPoints * 1.25) // Tier A threshold
+                      const lowerTierThreshold = Math.ceil(avgPoints * 0.55) // Tier C threshold
                       const pointsToA = Math.max(0, upperTierThreshold - player.points)
                       const pointsToC = Math.max(0, player.points - lowerTierThreshold)
                       return (
@@ -501,13 +458,13 @@ export default async function HomePage() {
                   <div className="text-sm text-blue-900 dark:text-blue-200 flex flex-wrap gap-x-4 gap-y-1">
                     <span className="font-semibold">🌱 Sem limite de vagas</span>
                     <span>•</span>
-                    <span>📈 ≥{Math.ceil(avgPoints * 0.3)} pontos</span>
+                    <span>📈 ≥{Math.ceil(avgPoints * 0.55)} pontos (55% da média)</span>
                   </div>
                 </div>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {tierGroups.C.map((player, index) => {
-                      const upperTierThreshold = Math.ceil(avgPoints * 0.5) // Tier B threshold
+                      const upperTierThreshold = Math.ceil(avgPoints * 0.85) // Tier B threshold
                       const pointsToB = Math.max(0, upperTierThreshold - player.points)
                       return (
                       <Card key={player.id} className="hover:shadow-lg transition-all border-blue-200 dark:border-blue-800">
@@ -572,7 +529,7 @@ export default async function HomePage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {tierGroups.D.map((player, index) => {
-                      const upperTierThreshold = Math.ceil(avgPoints * 0.3) // Tier C threshold
+                      const upperTierThreshold = Math.ceil(avgPoints * 0.55) // Tier C threshold
                       const pointsToC = Math.max(0, upperTierThreshold - player.points)
                       return (
                       <Card key={player.id} className="hover:shadow-lg transition-all border-gray-200 dark:border-gray-800">

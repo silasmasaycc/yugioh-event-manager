@@ -4,16 +4,17 @@ import { useMemo, useCallback, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Scatter } from 'recharts'
 import { FilterBadge } from './filter-badge'
+import type { PlayerStats } from '@/lib/types'
 
-interface PlayerStats {
+interface PerformanceChartData {
   name: string
-  participations: number
-  tops: number
   topPercentage: number
+  tops: number
+  participations: number
 }
 
 interface PerformanceChartProps {
-  data: PlayerStats[]
+  data: PerformanceChartData[]
   colors: string[]
   isFiltered?: boolean
   filteredCount?: number

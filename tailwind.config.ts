@@ -51,6 +51,17 @@ const config: Config = {
       },
     },
   },
+  safelist: [
+    // Tier border colors - necessário para classes dinâmicas
+    'border-l-4',
+    'border-l-red-500',
+    'border-l-yellow-500',
+    'border-l-green-500',
+    'border-l-blue-500',
+    'border-l-gray-500',
+    'border-l-gray-300',
+    'dark:border-l-gray-700',
+  ],
   plugins: [],
 }
 

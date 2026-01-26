@@ -94,7 +94,7 @@ export function StreaksChart({ tournaments, results, topPlayers, colors, isFilte
         y: currentStreak,
         z: totalTops
       }
-    }).sort((a, b) => b.maxStreak - a.maxStreak)
+    }).sort((a, b) => b.currentStreak - a.currentStreak) // Ordenar por streak ativo (melhor para pior)
   }, [tournaments, results, topPlayers])
 
   // Agrupar jogadores com mesmas coordenadas e dispersá-los em círculo

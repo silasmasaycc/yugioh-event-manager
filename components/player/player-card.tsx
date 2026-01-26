@@ -5,7 +5,11 @@ import { PlayerAvatar } from '@/components/player/player-avatar'
 import { MEDAL_ICONS } from '@/lib/constants'
 
 interface PlayerCardProps {
-  player: PlayerStats & { penalties?: number }
+  player: PlayerStats & { 
+    penalties?: number
+    veteranPenalties?: number
+    beginnerPenalties?: number
+  }
   showPenalties?: boolean
 }
 
@@ -99,19 +103,26 @@ export function PlayerCard({ player, showPenalties = true }: PlayerCardProps) {
           </div>
         )}
 
-        {/* Penalidades (se houver) */}
+        {/* Penalidades (se houver) - Layout compacto */}
         {showPenalties && player.penalties !== undefined && player.penalties > 0 && (
-          <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border-l-4 border-red-500">
-            <div className="flex items-center justify-between">
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                <span className="text-sm font-semibold text-red-600 dark:text-red-400">
-                  Double Loss
-                </span>
+                <span className="text-xs text-gray-600 dark:text-gray-400">Double Loss:</span>
               </div>
-              <span className="text-lg font-bold text-red-600 dark:text-red-400">
-                {player.penalties}
-              </span>
+              <div className="flex gap-2">
+                {player.veteranPenalties !== undefined && player.veteranPenalties > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded-full text-xs font-semibold">
+                    🏆 {player.veteranPenalties}
+                  </span>
+                )}
+                {player.beginnerPenalties !== undefined && player.beginnerPenalties > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 rounded-full text-xs font-semibold">
+                    🆕 {player.beginnerPenalties}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )}
