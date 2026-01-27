@@ -22,22 +22,36 @@ interface ProcessedPlayer {
 }
 
 /**
- * Filtra resultados de torneios por tipo (veteranos ou novatos)
+ * Filtra resultados de torneios E penalties por tipo (veteranos ou novatos)
  * 
- * @param players - Array de jogadores com tournament_results
+ * @param players - Array de jogadores com tournament_results e penalties
  * @param tournamentIds - IDs dos torneios a serem mantidos
- * @returns Jogadores com resultados filtrados
+ * @param penaltyType - Tipo de penalty: 'beginner' para novatos, 'regular' para veteranos
+ * @returns Jogadores com resultados e penalties filtrados
  */
 export function filterPlayersByTournamentType(
   players: PlayerData[],
-  tournamentIds: number[]
+  tournamentIds: number[],
+  penaltyType?: 'beginner' | 'regular'
 ): PlayerData[] {
-  return players?.map(player => ({
-    ...player,
-    tournament_results: player.tournament_results?.filter((result: TournamentResult) => 
-      tournamentIds.includes(result.tournament_id)
-    ) || []
-  })) || []
+  return players?.map(player => {
+    let filteredPenalties = player.penalties || []
+    
+    // Se um tipo de penalty foi especificado, filtrar por esse tipo
+    if (penaltyType === 'beginner') {
+      filteredPenalties = filteredPenalties.filter((p: Penalty) => p.penalty_type === 'beginner')
+    } else if (penaltyType === 'regular') {
+      filteredPenalties = filteredPenalties.filter((p: Penalty) => p.penalty_type !== 'beginner')
+    }
+    
+    return {
+      ...player,
+      tournament_results: player.tournament_results?.filter((result: TournamentResult) => 
+        tournamentIds.includes(result.tournament_id)
+      ) || [],
+      penalties: filteredPenalties
+    }
+  }) || []
 }
 
 /**
@@ -86,14 +100,16 @@ export function processPlayersWithStats(
  * @param players - Array de jogadores com tournament_results
  * @param tournamentIds - IDs dos torneios a serem mantidos
  * @param includePenaltySeparation - Se true, separa penalties por tipo
+ * @param penaltyType - Tipo de penalty: 'beginner' para novatos, 'regular' para veteranos
  * @returns Jogadores filtrados e processados
  */
 export function filterAndProcessPlayers(
   players: PlayerData[],
   tournamentIds: number[],
-  includePenaltySeparation = false
+  includePenaltySeparation = false,
+  penaltyType?: 'beginner' | 'regular'
 ): ProcessedPlayer[] {
-  const filtered = filterPlayersByTournamentType(players, tournamentIds)
+  const filtered = filterPlayersByTournamentType(players, tournamentIds, penaltyType)
   return processPlayersWithStats(filtered, includePenaltySeparation)
 }
 

@@ -1,12 +1,13 @@
 'use client'
 
+import Link from 'next/link'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PlayerCard } from '@/components/player/player-card'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Search, Users, Award, TrendingUp, Filter, X } from 'lucide-react'
+import { Search, Users, Award, TrendingUp, Filter, X, ArrowRight } from 'lucide-react'
 import { LABELS } from '@/lib/constants/messages'
 import type { PlayerWithStatsAndTier, TierSlots } from '@/lib/types'
 import { getTierBadgeColor } from '@/lib/utils/tier-styles'
@@ -16,9 +17,10 @@ interface PlayersClientProps {
   players: PlayerWithStatsAndTier[]
   tierSlots: TierSlots
   avgPoints: number
+  isBeginnerMode?: boolean
 }
 
-export function PlayersClient({ players }: PlayersClientProps) {
+export function PlayersClient({ players, isBeginnerMode = false }: PlayersClientProps) {
   const {
     searchTerm,
     setSearchTerm,
@@ -35,10 +37,37 @@ export function PlayersClient({ players }: PlayersClientProps) {
   return (
     <PageLayout activeRoute="/players">
       <div className="mb-8">
-        <h2 className="text-4xl font-bold mb-2">{LABELS.PLAYERS}</h2>
-        <p className="text-gray-600 dark:text-gray-300">
-          Lista completa de jogadores cadastrados no sistema
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <div className="inline-flex items-center gap-3 mb-3">
+              <span className="text-4xl">{isBeginnerMode ? '🆕' : '👥'}</span>
+              <h2 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent pb-1">
+                {isBeginnerMode ? 'Jogadores Novatos' : 'Jogadores Veteranos'}
+              </h2>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300">
+              {isBeginnerMode 
+                ? 'Lista de jogadores que participam dos torneios para iniciantes'
+                : 'Lista de jogadores que participam dos torneios veteranos'
+              }
+            </p>
+          </div>
+
+          {/* Botão de alternar modo */}
+          <Link href={isBeginnerMode ? '/players' : '/players/beginners'} className="shrink-0">
+            <Button 
+              size="lg"
+              className={`gap-2 w-full sm:w-auto ${
+                isBeginnerMode 
+                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700' 
+                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
+              }`}
+            >
+              {isBeginnerMode ? '👥 Ver Jogadores Veteranos' : '🆕 Ver Jogadores Novatos'}
+              <ArrowRight className="h-5 w-5" />
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Estatísticas */}
@@ -112,21 +141,23 @@ export function PlayersClient({ players }: PlayersClientProps) {
               />
             </div>
 
-            {/* Filtro de Tier */}
-            <Select value={tierFilter} onValueChange={setTierFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos os tiers" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os tiers</SelectItem>
-                <SelectItem value="S">🔴 Tier S - Elite</SelectItem>
-                <SelectItem value="A">🟡 Tier A - Forte</SelectItem>
-                <SelectItem value="B">🟢 Tier B - Sólido</SelectItem>
-                <SelectItem value="C">🔵 Tier C - Emergente</SelectItem>
-                <SelectItem value="D">⚪ Tier D - Promessa</SelectItem>
-                <SelectItem value="none">Sem tier</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Filtro de Tier - apenas para veteranos */}
+            {!isBeginnerMode && (
+              <Select value={tierFilter} onValueChange={setTierFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os tiers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tiers</SelectItem>
+                  <SelectItem value="S">🔴 Tier S - Elite</SelectItem>
+                  <SelectItem value="A">🟡 Tier A - Forte</SelectItem>
+                  <SelectItem value="B">🟢 Tier B - Sólido</SelectItem>
+                  <SelectItem value="C">🔵 Tier C - Emergente</SelectItem>
+                  <SelectItem value="D">⚪ Tier D - Promessa</SelectItem>
+                  <SelectItem value="none">Sem tier</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
 
             {/* Ordenação */}
             <Select value={sortBy} onValueChange={setSortBy}>
@@ -154,7 +185,8 @@ export function PlayersClient({ players }: PlayersClientProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPlayers.map((player) => (
           <div key={player.id} className="relative">
-            {player.tier && (
+            {/* Badge de Tier - apenas para veteranos */}
+            {!isBeginnerMode && player.tier && (
               <div className={`absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full ${getTierBadgeColor(player.tier)} flex items-center justify-center text-sm font-bold shadow-lg`}>
                 {player.tier}
               </div>

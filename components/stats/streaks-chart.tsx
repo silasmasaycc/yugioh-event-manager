@@ -90,8 +90,8 @@ export function StreaksChart({ tournaments, results, topPlayers, colors, isFilte
         currentDrought,
         maxDrought,
         totalTops,
-        x: maxStreak,
-        y: currentStreak,
+        x: currentStreak,
+        y: maxStreak,
         z: totalTops
       }
     }).sort((a, b) => b.currentStreak - a.currentStreak) // Ordenar por streak ativo (melhor para pior)
@@ -202,7 +202,7 @@ export function StreaksChart({ tournaments, results, topPlayers, colors, isFilte
           <div>
             <CardTitle>🔥 Análise de Streaks</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Relação entre streak máxima, streak atual e desempenho geral
+              Relação entre streak atual, streak máxima e desempenho geral
             </p>
           </div>
           <FilterBadge isFiltered={isFiltered} filteredCount={filteredCount} totalCount={totalCount} />
@@ -210,8 +210,8 @@ export function StreaksChart({ tournaments, results, topPlayers, colors, isFilte
         <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-xs text-blue-800 leading-relaxed">
             💡 <span className="font-semibold">Como ler:</span> Cada bolha representa um jogador. 
-            <strong className="text-orange-600"> Eixo X (🔥)</strong>: maior sequência de TOPs consecutivos. 
-            <strong className="text-orange-600"> Eixo Y (⚡)</strong>: sequência atual de TOPs. 
+            <strong className="text-orange-600"> Eixo X (⚡)</strong>: sequência atual de TOPs. 
+            <strong className="text-orange-600"> Eixo Y (🔥)</strong>: maior sequência de TOPs consecutivos já alcançada. 
             <strong> Tamanho</strong>: total de TOPs conquistados. 
             <strong className="text-orange-600"> Cor Laranja (🔥)</strong>: streak ativo. 
             <strong className="text-blue-600"> Cor Azul (❄️)</strong>: sem streak ativo (intensidade = maior seca).
@@ -227,9 +227,9 @@ export function StreaksChart({ tournaments, results, topPlayers, colors, isFilte
             <XAxis 
               type="number" 
               dataKey="displayX" 
-              name="Maior Streak"
+              name="Streak Atual"
               label={{ 
-                value: '🔥 Maior Sequência de TOPs Consecutivos', 
+                value: '⚡ Sequência Atual de TOPs', 
                 position: 'insideBottom', 
                 offset: -10,
                 style: { fontSize: 12, fontWeight: 600 }
@@ -239,9 +239,9 @@ export function StreaksChart({ tournaments, results, topPlayers, colors, isFilte
             <YAxis 
               type="number" 
               dataKey="displayY" 
-              name="Streak Atual"
+              name="Maior Streak"
               label={{ 
-                value: '⚡ Sequência Atual de TOPs', 
+                value: '🔥 Maior Sequência de TOPs Consecutivos', 
                 angle: -90, 
                 position: 'insideLeft',
                 style: { fontSize: 12, fontWeight: 600 }

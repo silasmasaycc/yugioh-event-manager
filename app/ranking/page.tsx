@@ -47,7 +47,7 @@ export default async function RankingPage() {
 
   // Filtrar apenas resultados de torneios de veteranos e processar estatísticas
   // Apenas jogadores com pelo menos 1 torneio podem entrar no ranking
-  const playersWithStats = filterAndProcessPlayers(players || [], regularTournamentIds)
+  const playersWithStats = filterAndProcessPlayers(players || [], regularTournamentIds, false, 'regular')
     .filter(p => p.totalTournaments > 0)
 
   // Calcular tiers usando função utilitária
@@ -65,7 +65,7 @@ export default async function RankingPage() {
     .order('name')
 
   // Usar função utilitária para processar jogadores com penalidades
-  const penaltyPlayersProcessed = filterAndProcessPlayers(penaltyPlayers || [], regularTournamentIds)
+  const penaltyPlayersProcessed = filterAndProcessPlayers(penaltyPlayers || [], regularTournamentIds, false, 'regular')
   const penaltyStats = processPenaltyStats(penaltyPlayersProcessed)
 
   return <RankingClient players={playersWithTiers} penaltyStats={penaltyStats} tierSlots={tierSlots} avgPoints={avgPoints} />

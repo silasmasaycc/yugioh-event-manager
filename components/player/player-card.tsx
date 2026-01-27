@@ -18,6 +18,9 @@ export function PlayerCard({ player, showPenalties = true }: PlayerCardProps) {
   const totalPoints = (player.firstPlace * 4) + (player.secondPlace * 3) + 
                      (player.thirdPlace * 2) + (player.fourthPlace * 2)
 
+
+  console.log('Rendering PlayerCard for:', player, 'Total Points:', totalPoints)
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] duration-200">
       <CardContent className="p-5">
@@ -103,24 +106,30 @@ export function PlayerCard({ player, showPenalties = true }: PlayerCardProps) {
           </div>
         )}
 
-        {/* Penalidades (se houver) - Layout compacto */}
+        {/* Penalidades (se houver) */}
         {showPenalties && player.penalties !== undefined && player.penalties > 0 && (
-          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-            <div className="flex items-center justify-between gap-3">
+          <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                <span className="text-xs text-gray-600 dark:text-gray-400">Double Loss:</span>
+                <span className="text-sm font-semibold text-red-700 dark:text-red-400">
+                  Double Loss
+                </span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3">
                 {player.veteranPenalties !== undefined && player.veteranPenalties > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded-full text-xs font-semibold">
-                    🏆 {player.veteranPenalties}
-                  </span>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-red-600 dark:text-red-400">
+                      {player.veteranPenalties}
+                    </div>
+                  </div>
                 )}
                 {player.beginnerPenalties !== undefined && player.beginnerPenalties > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 rounded-full text-xs font-semibold">
-                    🆕 {player.beginnerPenalties}
-                  </span>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                      {player.beginnerPenalties}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

@@ -57,7 +57,7 @@ export default async function HomePage() {
   ])
 
   // Processar jogadores filtrando apenas torneios de veteranos
-  const playersWithStats = filterAndProcessPlayers(allPlayers || [], regularTournamentIds)
+  const playersWithStats = filterAndProcessPlayers(allPlayers || [], regularTournamentIds, false, 'regular')
 
   // Calcular tiers usando função utilitária
   const { tierSlots, avgPoints, tierGroups } = calculateTiers(playersWithStats)

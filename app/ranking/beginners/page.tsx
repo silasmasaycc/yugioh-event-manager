@@ -51,7 +51,7 @@ export default async function BeginnerRankingPage() {
   }
 
   // Filtrar apenas resultados de torneios de novatos e processar estatísticas
-  const playersWithStats = filterAndProcessPlayers(players || [], beginnerTournamentIds)
+  const playersWithStats = filterAndProcessPlayers(players || [], beginnerTournamentIds, false, 'beginner')
     .filter(p => p.totalTournaments > 0) // Apenas jogadores com participação em torneios de novatos
 
   // Sem sistema de tiers para novatos
@@ -70,7 +70,7 @@ export default async function BeginnerRankingPage() {
     .order('name')
 
   // Usar função utilitária para processar jogadores com penalidades
-  const penaltyPlayersProcessed = filterAndProcessPlayers(penaltyPlayers || [], beginnerTournamentIds)
+  const penaltyPlayersProcessed = filterAndProcessPlayers(penaltyPlayers || [], beginnerTournamentIds, false, 'beginner')
   const penaltyStats = processPenaltyStats(penaltyPlayersProcessed)
 
   return (
