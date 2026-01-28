@@ -15,11 +15,18 @@ interface Player {
   name: string
 }
 
+interface Deck {
+  id: number
+  name: string
+  image_url?: string
+}
+
 interface TournamentFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   editingTournament: any | null
   players: Player[]
+  decks: Deck[]
   onSuccess: () => void
   isAdmin: boolean
 }
@@ -29,6 +36,7 @@ export function TournamentFormDialog({
   onOpenChange, 
   editingTournament, 
   players,
+  decks,
   onSuccess, 
   isAdmin 
 }: TournamentFormDialogProps) {
@@ -40,6 +48,14 @@ export function TournamentFormDialog({
   const [secondPlace, setSecondPlace] = useState('')
   const [thirdPlace, setThirdPlace] = useState('')
   const [fourthPlace, setFourthPlace] = useState('')
+  const [firstDeck, setFirstDeck] = useState('none')
+  const [secondDeck, setSecondDeck] = useState('none')
+  const [thirdDeck, setThirdDeck] = useState('none')
+  const [fourthDeck, setFourthDeck] = useState('none')
+  const [firstDeckSecondary, setFirstDeckSecondary] = useState('none')
+  const [secondDeckSecondary, setSecondDeckSecondary] = useState('none')
+  const [thirdDeckSecondary, setThirdDeckSecondary] = useState('none')
+  const [fourthDeckSecondary, setFourthDeckSecondary] = useState('none')
   const [otherParticipants, setOtherParticipants] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -63,6 +79,17 @@ export function TournamentFormDialog({
       setThirdPlace(third?.player?.id?.toString() || '')
       setFourthPlace(fourth?.player?.id?.toString() || '')
       
+      // Load decks for each position
+      setFirstDeck(first?.deck_id?.toString() || 'none')
+      setSecondDeck(second?.deck_id?.toString() || 'none')
+      setThirdDeck(third?.deck_id?.toString() || 'none')
+      setFourthDeck(fourth?.deck_id?.toString() || 'none')
+      
+      setFirstDeckSecondary(first?.deck_id_secondary?.toString() || 'none')
+      setSecondDeckSecondary(second?.deck_id_secondary?.toString() || 'none')
+      setThirdDeckSecondary(third?.deck_id_secondary?.toString() || 'none')
+      setFourthDeckSecondary(fourth?.deck_id_secondary?.toString() || 'none')
+      
       // Load other participants (without placement)
       const others = results
         .filter((r: any) => r.placement === null)
@@ -84,6 +111,14 @@ export function TournamentFormDialog({
     setSecondPlace('')
     setThirdPlace('')
     setFourthPlace('')
+    setFirstDeck('none')
+    setSecondDeck('none')
+    setThirdDeck('none')
+    setFourthDeck('none')
+    setFirstDeckSecondary('none')
+    setSecondDeckSecondary('none')
+    setThirdDeckSecondary('none')
+    setFourthDeckSecondary('none')
     setOtherParticipants([])
   }
 
@@ -94,10 +129,30 @@ export function TournamentFormDialog({
     try {
       // Preparar resultados
       const results = []
-      if (firstPlace) results.push({ player_id: parseInt(firstPlace), placement: 1 })
-      if (secondPlace) results.push({ player_id: parseInt(secondPlace), placement: 2 })
-      if (thirdPlace) results.push({ player_id: parseInt(thirdPlace), placement: 3 })
-      if (fourthPlace) results.push({ player_id: parseInt(fourthPlace), placement: 4 })
+      if (firstPlace) results.push({ 
+        player_id: parseInt(firstPlace), 
+        placement: 1,
+        deck_id: firstDeck && firstDeck !== 'none' ? parseInt(firstDeck) : null,
+        deck_id_secondary: firstDeckSecondary && firstDeckSecondary !== 'none' ? parseInt(firstDeckSecondary) : null
+      })
+      if (secondPlace) results.push({ 
+        player_id: parseInt(secondPlace), 
+        placement: 2,
+        deck_id: secondDeck && secondDeck !== 'none' ? parseInt(secondDeck) : null,
+        deck_id_secondary: secondDeckSecondary && secondDeckSecondary !== 'none' ? parseInt(secondDeckSecondary) : null
+      })
+      if (thirdPlace) results.push({ 
+        player_id: parseInt(thirdPlace), 
+        placement: 3,
+        deck_id: thirdDeck && thirdDeck !== 'none' ? parseInt(thirdDeck) : null,
+        deck_id_secondary: thirdDeckSecondary && thirdDeckSecondary !== 'none' ? parseInt(thirdDeckSecondary) : null
+      })
+      if (fourthPlace) results.push({ 
+        player_id: parseInt(fourthPlace), 
+        placement: 4,
+        deck_id: fourthDeck && fourthDeck !== 'none' ? parseInt(fourthDeck) : null,
+        deck_id_secondary: fourthDeckSecondary && fourthDeckSecondary !== 'none' ? parseInt(fourthDeckSecondary) : null
+      })
       
       // Add other participants without placement (didn't finish in TOP 4)
       otherParticipants.forEach(playerId => {
@@ -247,6 +302,34 @@ export function TournamentFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={firstDeck} onValueChange={(value) => setFirstDeck(value === 'none' ? '' : value)} disabled={isSubmitting || !firstPlace}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Deck 1 (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {decks.map((deck) => (
+                        <SelectItem key={deck.id} value={deck.id.toString()}>
+                          {deck.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={firstDeckSecondary} onValueChange={(value) => setFirstDeckSecondary(value === 'none' ? '' : value)} disabled={isSubmitting || !firstPlace}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Deck 2 (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {decks.map((deck) => (
+                        <SelectItem key={deck.id} value={deck.id.toString()}>
+                          {deck.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -263,6 +346,34 @@ export function TournamentFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={secondDeck} onValueChange={(value) => setSecondDeck(value === 'none' ? '' : value)} disabled={isSubmitting || !secondPlace}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Deck 1 (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {decks.map((deck) => (
+                        <SelectItem key={deck.id} value={deck.id.toString()}>
+                          {deck.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={secondDeckSecondary} onValueChange={(value) => setSecondDeckSecondary(value === 'none' ? '' : value)} disabled={isSubmitting || !secondPlace}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Deck 2 (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {decks.map((deck) => (
+                        <SelectItem key={deck.id} value={deck.id.toString()}>
+                          {deck.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -279,6 +390,34 @@ export function TournamentFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={thirdDeck} onValueChange={(value) => setThirdDeck(value === 'none' ? '' : value)} disabled={isSubmitting || !thirdPlace}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Deck 1 (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {decks.map((deck) => (
+                        <SelectItem key={deck.id} value={deck.id.toString()}>
+                          {deck.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={thirdDeckSecondary} onValueChange={(value) => setThirdDeckSecondary(value === 'none' ? '' : value)} disabled={isSubmitting || !thirdPlace}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Deck 2 (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {decks.map((deck) => (
+                        <SelectItem key={deck.id} value={deck.id.toString()}>
+                          {deck.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -295,6 +434,34 @@ export function TournamentFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={fourthDeck} onValueChange={(value) => setFourthDeck(value === 'none' ? '' : value)} disabled={isSubmitting || !fourthPlace}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Deck 1 (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {decks.map((deck) => (
+                        <SelectItem key={deck.id} value={deck.id.toString()}>
+                          {deck.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={fourthDeckSecondary} onValueChange={(value) => setFourthDeckSecondary(value === 'none' ? '' : value)} disabled={isSubmitting || !fourthPlace}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Deck 2 (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {decks.map((deck) => (
+                        <SelectItem key={deck.id} value={deck.id.toString()}>
+                          {deck.name}
+                        </SelectItem>
+                      ))}  
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>

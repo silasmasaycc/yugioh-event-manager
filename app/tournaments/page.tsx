@@ -14,7 +14,19 @@ export default async function TournamentsPage() {
       *,
       tournament_results (
         placement,
+        deck_id,
+        deck_id_secondary,
         player:players (
+          id,
+          name,
+          image_url
+        ),
+        deck:decks!tournament_results_deck_id_fkey (
+          id,
+          name,
+          image_url
+        ),
+        deck_secondary:decks!tournament_results_deck_id_secondary_fkey (
           id,
           name,
           image_url

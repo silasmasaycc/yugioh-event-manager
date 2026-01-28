@@ -78,7 +78,7 @@ export async function createTournament(data: {
   date: string
   player_count: number
   tournament_type?: string
-  results: Array<{ player_id: number; placement: number | null }>
+  results: Array<{ player_id: number; placement: number | null; deck_id?: number | null; deck_id_secondary?: number | null }>
 }) {
   const supabase = await createClient()
   
@@ -103,7 +103,9 @@ export async function createTournament(data: {
     const resultsToInsert = data.results.map(result => ({
       tournament_id: tournament.id,
       player_id: result.player_id,
-      placement: result.placement
+      placement: result.placement,
+      deck_id: result.deck_id || null,
+      deck_id_secondary: result.deck_id_secondary || null
     }))
 
     const { error: resultsError } = await supabase
@@ -134,7 +136,7 @@ export async function updateTournament(
     date: string
     player_count: number
     tournament_type?: string
-    results: Array<{ player_id: number; placement: number | null }>
+    results: Array<{ player_id: number; placement: number | null; deck_id?: number | null; deck_id_secondary?: number | null }>
   }
 ) {
   const supabase = await createClient()
@@ -164,7 +166,9 @@ export async function updateTournament(
     const resultsToInsert = data.results.map(result => ({
       tournament_id: id,
       player_id: result.player_id,
-      placement: result.placement
+      placement: result.placement,
+      deck_id: result.deck_id || null,
+      deck_id_secondary: result.deck_id_secondary || null
     }))
 
     const { error: resultsError } = await supabase
@@ -251,6 +255,65 @@ export async function deletePenalty(id: string) {
   // Revalidar páginas que mostram penalidades
   revalidatePath('/players')
   revalidatePath('/stats')
+
+  return { success: true }
+}
+
+// ============= DECKS =============
+
+export async function createDeck(data: { name: string; image_url?: string }) {
+  const supabase = await createClient()
+  
+  const { data: deck, error } = await supabase
+    .from('decks')
+    .insert([{ name: data.name, image_url: data.image_url }])
+    .select()
+    .single()
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath('/admin/dashboard')
+  revalidatePath('/tournaments')
+
+  return { success: true, data: deck }
+}
+
+export async function updateDeck(id: number, data: { name: string; image_url?: string }) {
+  const supabase = await createClient()
+  
+  const { data: deck, error } = await supabase
+    .from('decks')
+    .update({ name: data.name, image_url: data.image_url })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath('/admin/dashboard')
+  revalidatePath('/tournaments')
+
+  return { success: true, data: deck }
+}
+
+export async function deleteDeck(id: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('decks')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath('/admin/dashboard')
+  revalidatePath('/tournaments')
 
   return { success: true }
 }

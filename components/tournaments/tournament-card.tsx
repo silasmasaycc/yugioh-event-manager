@@ -6,6 +6,7 @@ import { MapPin, Users, Calendar, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { TOP_POSITIONS, MEDAL_ICONS } from '@/lib/constants'
 import { PlayerAvatar } from '@/components/player/player-avatar'
+import Image from 'next/image'
 
 interface TournamentCardProps {
   tournament: {
@@ -17,7 +18,19 @@ interface TournamentCardProps {
     tournament_type?: string
     tournament_results: Array<{
       placement: number | null
+      deck_id?: number | null
+      deck_id_secondary?: number | null
       player: {
+        id: number
+        name: string
+        image_url?: string
+      } | null
+      deck?: {
+        id: number
+        name: string
+        image_url?: string
+      } | null
+      deck_secondary?: {
         id: number
         name: string
         image_url?: string
@@ -84,26 +97,76 @@ export function TournamentCard({ tournament, actions }: TournamentCardProps) {
 
         {topResults.length > 0 && (
           <div className="mt-4 pt-4 border-t">
-            <h4 className="text-sm font-semibold mb-3 text-gray-700">🏆 Top 4</h4>
+            <h4 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">🏆 Top 4</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {topResults.map((result) => {
                 const medal = MEDAL_ICONS[result.placement as 1 | 2 | 3 | 4] || '🏆'
+                const hasDecks = result.deck || result.deck_secondary
                 
                 return (
                   <div
                     key={`${tournament.id}-${result.placement}`}
-                    className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="relative flex items-center gap-3 p-4 pr-28 min-h-[80px] rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 hover:shadow-md transition-all border border-gray-200 dark:border-gray-600"
                   >
-                    <span className="text-2xl flex-shrink-0">{medal}</span>
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <PlayerAvatar
-                        imageUrl={result.player?.image_url}
-                        playerName={result.player?.name || 'N/A'}
-                        size="sm"
-                      />
-                      <span className="text-sm font-medium truncate">{result.player?.name || 'N/A'}</span>
+                    {/* Floating Deck Badges */}
+                    {hasDecks && (
+                      <div className="absolute top-2 right-2 flex flex-col gap-1">
+                        {result.deck && (
+                          <div className="inline-flex items-center gap-1 px-1.5 py-1 rounded-md bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 shadow-sm">
+                            {result.deck.image_url ? (
+                              <div className="relative h-5 w-5 rounded overflow-hidden flex-shrink-0">
+                                <Image
+                                  src={result.deck.image_url}
+                                  alt={result.deck.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-xs">🃏</span>
+                            )}
+                            <span className="text-[10px] font-medium text-gray-700 dark:text-gray-200 max-w-[60px] truncate">
+                              {result.deck.name}
+                            </span>
+                          </div>
+                        )}
+                        {result.deck_secondary && (
+                          <div className="inline-flex items-center gap-1 px-1.5 py-1 rounded-md bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 shadow-sm">
+                            {result.deck_secondary.image_url ? (
+                              <div className="relative h-5 w-5 rounded overflow-hidden flex-shrink-0">
+                                <Image
+                                  src={result.deck_secondary.image_url}
+                                  alt={result.deck_secondary.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-xs">🃏</span>
+                            )}
+                            <span className="text-[10px] font-medium text-gray-700 dark:text-gray-200 max-w-[60px] truncate">
+                              {result.deck_secondary.name}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Player Info */}
+                    <PlayerAvatar
+                      imageUrl={result.player?.image_url}
+                      playerName={result.player?.name || 'N/A'}
+                      size="md"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold truncate dark:text-white">
+                        {result.player?.name || 'N/A'}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-base">{medal}</span>
+                        <span>{result.placement}º lugar</span>
+                      </div>
                     </div>
-                    <span className="text-xs text-gray-500 flex-shrink-0">{result.placement}º</span>
                   </div>
                 )
               })}

@@ -12,16 +12,19 @@ import { TournamentCard } from '@/components/tournaments/tournament-card'
 import { PlayerFormDialog } from '@/components/admin/player-form-dialog'
 import { TournamentFormDialog } from '@/components/admin/tournament-form-dialog'
 import { AdminPlayerCard } from '@/components/admin/admin-player-card'
-import { deletePlayer, deleteTournament, addPenalty, deletePenalty } from '@/app/admin/actions'
+import { DeckFormDialog } from '@/components/admin/deck-form-dialog'
+import { AdminDeckCard } from '@/components/admin/admin-deck-card'
+import { deletePlayer, deleteTournament, addPenalty, deletePenalty, deleteDeck } from '@/app/admin/actions'
 
 export default function AdminDashboard() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { role, isAdmin, loading: roleLoading } = useUserRole()
-  const [activeTab, setActiveTab] = useState<'players' | 'tournaments'>('tournaments')
+  const [activeTab, setActiveTab] = useState<'players' | 'tournaments' | 'decks'>('tournaments')
   const [players, setPlayers] = useState<any[]>([])
   const [tournaments, setTournaments] = useState<any[]>([])
   const [penalties, setPenalties] = useState<any[]>([])
+  const [decks, setDecks] = useState<any[]>([])
   
   // Player form state
   const [showPlayerForm, setShowPlayerForm] = useState(false)
@@ -30,6 +33,10 @@ export default function AdminDashboard() {
   // Tournament form state
   const [showTournamentForm, setShowTournamentForm] = useState(false)
   const [editingTournament, setEditingTournament] = useState<any>(null)
+
+  // Deck form state
+  const [showDeckForm, setShowDeckForm] = useState(false)
+  const [editingDeck, setEditingDeck] = useState<any>(null)
 
   const supabase = createClient()
 
@@ -46,7 +53,7 @@ export default function AdminDashboard() {
   }, [user])
 
   const loadData = async () => {
-    const [{ data: playersData }, { data: tournamentsData }, { data: penaltiesData }] = await Promise.all([
+    const [{ data: playersData }, { data: tournamentsData }, { data: penaltiesData }, { data: decksData }] = await Promise.all([
       supabase.from('players').select('*').order('name'),
       supabase
         .from('tournaments')
@@ -54,7 +61,19 @@ export default function AdminDashboard() {
           *,
           tournament_results (
             placement,
+            deck_id,
+            deck_id_secondary,
             player:players (
+              id,
+              name,
+              image_url
+            ),
+            deck:decks!tournament_results_deck_id_fkey (
+              id,
+              name,
+              image_url
+            ),
+            deck_secondary:decks!tournament_results_deck_id_secondary_fkey (
               id,
               name,
               image_url
@@ -71,12 +90,14 @@ export default function AdminDashboard() {
             name
           )
         `)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false }),
+      supabase.from('decks').select('*').order('name')
     ])
     
     setPlayers(playersData || [])
     setTournaments(tournamentsData || [])
     setPenalties(penaltiesData || [])
+    setDecks(decksData || [])
   }
 
   const handleLogout = async () => {
@@ -208,6 +229,33 @@ export default function AdminDashboard() {
     setEditingTournament(null)
   }
 
+  const startEditDeck = (deck: any) => {
+    setEditingDeck(deck)
+    setShowDeckForm(true)
+  }
+
+  const handleDeleteDeck = async (deckId: number) => {
+    if (!confirm('Tem certeza que deseja excluir este deck? Ele será removido dos torneios associados.')) return
+
+    try {
+      const result = await deleteDeck(deckId.toString())
+      
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      toast.success('Deck excluído!')
+      loadData()
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao excluir deck')
+    }
+  }
+
+  const handleDeckFormClose = () => {
+    setShowDeckForm(false)
+    setEditingDeck(null)
+  }
+
   if (roleLoading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -278,6 +326,16 @@ export default function AdminDashboard() {
             }`}
           >
             Jogadores
+          </button>
+          <button
+            onClick={() => setActiveTab('decks')}
+            className={`px-4 py-2 font-semibold transition-colors ${
+              activeTab === 'decks'
+                ? 'text-purple-600 border-b-2 border-purple-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Decks
           </button>
         </div>
 
@@ -354,6 +412,31 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Decks Tab */}
+        {activeTab === 'decks' && (
+          <div>
+            <div className="mb-6 flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Gerenciar Decks</h2>
+              <Button onClick={() => setShowDeckForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Deck
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {decks.map((deck) => (
+                <AdminDeckCard
+                  key={deck.id}
+                  deck={deck}
+                  isAdmin={isAdmin}
+                  onEdit={startEditDeck}
+                  onDelete={handleDeleteDeck}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Dialogs */}
@@ -370,6 +453,15 @@ export default function AdminDashboard() {
         onOpenChange={handleTournamentFormClose}
         editingTournament={editingTournament}
         players={players}
+        decks={decks}
+        onSuccess={loadData}
+        isAdmin={isAdmin}
+      />
+
+      <DeckFormDialog
+        open={showDeckForm}
+        onOpenChange={handleDeckFormClose}
+        editingDeck={editingDeck}
         onSuccess={loadData}
         isAdmin={isAdmin}
       />
