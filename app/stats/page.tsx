@@ -6,13 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createClient } from '@/lib/supabase/client'
 import { PageLayout } from '@/components/layout/page-layout'
-import { PlayerProfileChart, PerformanceChart, TopsEvolutionChart, StreaksChart, ImprovementChart } from '@/components/stats'
+import { PlayerProfileChart, PerformanceChart, TopsEvolutionChart, StreaksChart, ImprovementChart, DeckUsageChart } from '@/components/stats'
 import { ERROR_MESSAGES } from '@/lib/constants/messages'
 import { logger } from '@/lib/utils/logger'
 import { generateColors, formatDateLong } from '@/lib/utils'
 import { sortPlayersByPerformance } from '@/lib/utils/player-stats'
+import { Users, PieChart } from 'lucide-react'
 import { 
   TOP_POSITIONS, 
   FIRST_PLACE,
@@ -59,6 +61,8 @@ export default function StatsPage() {
   const [placementDistribution, setPlacementDistribution] = useState<PlacementDistribution[]>([])
   const [totalTournaments, setTotalTournaments] = useState(0)
   const [filteredTournaments, setFilteredTournaments] = useState(0)
+  const [deckUsageData, setDeckUsageData] = useState<any[]>([])
+  const [deckColors, setDeckColors] = useState<Record<string, string>>({})
 
   const supabase = createClient()
 
@@ -114,7 +118,11 @@ export default function StatsPage() {
         .select(`
           placement,
           tournament_id,
-          player:players(id, name)
+          deck_id,
+          deck_id_secondary,
+          player:players(id, name),
+          deck:decks!tournament_results_deck_id_fkey(id, name, image_url),
+          deck_secondary:decks!tournament_results_deck_id_secondary_fkey(id, name, image_url)
         `)
         .in('tournament_id', tournamentIds)
 
@@ -257,6 +265,96 @@ export default function StatsPage() {
 
       setPlacementDistribution(Array.from(placementMap.values()))
 
+      // ======= ESTATÍSTICAS DE DECKS =======
+      
+      // 1. Calcular uso de decks e performance
+      const deckStatsMap = new Map<number, {
+        deckId: number
+        deckName: string
+        deckImageUrl?: string
+        totalUses: number
+        primaryUses: number
+        secondaryUses: number
+        firstPlace: number
+        secondPlace: number
+        thirdPlace: number
+        fourthPlace: number
+      }>()
+
+      results.forEach((result: any) => {
+        // Processar deck principal
+        if (result.deck_id && result.deck) {
+          if (!deckStatsMap.has(result.deck_id)) {
+            deckStatsMap.set(result.deck_id, {
+              deckId: result.deck_id,
+              deckName: result.deck.name,
+              deckImageUrl: result.deck.image_url,
+              totalUses: 0,
+              primaryUses: 0,
+              secondaryUses: 0,
+              firstPlace: 0,
+              secondPlace: 0,
+              thirdPlace: 0,
+              fourthPlace: 0
+            })
+          }
+
+          const primaryStats = deckStatsMap.get(result.deck_id)!
+          primaryStats.totalUses++
+          primaryStats.primaryUses++
+          
+          if (result.placement === 1) primaryStats.firstPlace++
+          else if (result.placement === 2) primaryStats.secondPlace++
+          else if (result.placement === 3) primaryStats.thirdPlace++
+          else if (result.placement === 4) primaryStats.fourthPlace++
+        }
+
+        // Processar deck secundário
+        if (result.deck_id_secondary && result.deck_secondary) {
+          if (!deckStatsMap.has(result.deck_id_secondary)) {
+            deckStatsMap.set(result.deck_id_secondary, {
+              deckId: result.deck_id_secondary,
+              deckName: result.deck_secondary.name,
+              deckImageUrl: result.deck_secondary.image_url,
+              totalUses: 0,
+              primaryUses: 0,
+              secondaryUses: 0,
+              firstPlace: 0,
+              secondPlace: 0,
+              thirdPlace: 0,
+              fourthPlace: 0
+            })
+          }
+
+          const secondaryStats = deckStatsMap.get(result.deck_id_secondary)!
+          secondaryStats.totalUses++
+          secondaryStats.secondaryUses++
+          
+          if (result.placement === 1) secondaryStats.firstPlace++
+          else if (result.placement === 2) secondaryStats.secondPlace++
+          else if (result.placement === 3) secondaryStats.thirdPlace++
+          else if (result.placement === 4) secondaryStats.fourthPlace++
+        }
+      })
+
+      const deckUsage = Array.from(deckStatsMap.values())
+        .map(deck => ({
+          ...deck,
+          winRate: deck.totalUses > 0 ? (deck.firstPlace / deck.totalUses) * 100 : 0
+        }))
+        .sort((a, b) => b.totalUses - a.totalUses)
+
+      setDeckUsageData(deckUsage)
+      
+      // Gerar cores para os decks (Top 10)
+      const topDeckNames = deckUsage.slice(0, 10).map(d => d.deckName)
+      const colors = generateColors(topDeckNames)
+      const colorMap: Record<string, string> = {}
+      topDeckNames.forEach((name, index) => {
+        colorMap[name] = colors[index]
+      })
+      setDeckColors(colorMap)
+
     } catch (error) {
       logger.error(ERROR_MESSAGES.LOAD_STATS_ERROR, error)
     }
@@ -287,9 +385,9 @@ export default function StatsPage() {
   return (
     <PageLayout activeRoute="/stats">
       <div className="mb-8">
-        <h2 className="text-4xl font-bold mb-2">Estatísticas</h2>
+        <h2 className="text-4xl font-bold mb-2">📊 Gráficos e Análises</h2>
         <p className="text-gray-600 dark:text-gray-300">
-          Análise de desempenho e participação dos jogadores
+          Análise visual de desempenho e estatísticas de jogadores e decks
         </p>
       </div>
 
@@ -395,66 +493,123 @@ export default function StatsPage() {
           <p className="text-xl text-gray-600">Carregando estatísticas...</p>
         </div>
       ) : (
-        <div className="space-y-8">
-          <PlayerProfileChart 
-            data={bestPerformance.map(p => ({
-              name: p.name,
-              participations: p.participations,
-              tops: p.totalTops,
-              topPercentage: p.topPercentage,
-              firstPlace: p.firstPlace ?? 0,
-              secondPlace: p.secondPlace ?? 0,
-              thirdPlace: p.thirdPlace ?? 0,
-              fourthPlace: p.fourthPlace ?? 0,
-              points: p.points ?? 0,
-              currentStreak: p.currentStreak ?? 0,
-              bestStreak: p.bestStreak ?? 0
-            }))} 
-            colors={generateColors(bestPerformance.map(p => p.name))} 
-            isFiltered={isFiltered}
-            filteredCount={filteredTournaments}
-            totalCount={totalTournaments}
-          />
-          <StreaksChart 
-            tournaments={topsEvolutionData.tournaments}
-            results={topsEvolutionData.results}
-            topPlayers={topsEvolutionData.topPlayers}
-            colors={generateColors(topsEvolutionData.topPlayers)}
-            isFiltered={isFiltered}
-            filteredCount={filteredTournaments}
-            totalCount={totalTournaments}
-          />
-          <ImprovementChart 
-            tournaments={topsEvolutionData.tournaments}
-            results={topsEvolutionData.results}
-            topPlayers={topsEvolutionData.topPlayers}
-            colors={generateColors(topsEvolutionData.topPlayers)}
-            isFiltered={isFiltered}
-            filteredCount={filteredTournaments}
-            totalCount={totalTournaments}
-          />
-          <TopsEvolutionChart 
-            tournaments={topsEvolutionData.tournaments}
-            results={topsEvolutionData.results}
-            topPlayers={topsEvolutionData.topPlayers}
-            colors={generateColors(topsEvolutionData.topPlayers)}
-            isFiltered={isFiltered}
-            filteredCount={filteredTournaments}
-            totalCount={totalTournaments}
-          />
-          <PerformanceChart 
-            data={bestPerformance.map(p => ({
-              name: p.name,
-              topPercentage: p.topPercentage,
-              tops: p.totalTops,
-              participations: p.participations
-            }))} 
-            colors={generateColors(bestPerformance.map(p => p.name))} 
-            isFiltered={isFiltered}
-            filteredCount={filteredTournaments}
-            totalCount={totalTournaments}
-          />
-        </div>
+        <Tabs defaultValue="players" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8 p-2 h-auto bg-gray-100 dark:bg-gray-800">
+            <TabsTrigger 
+              value="players" 
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:hover:bg-gray-200 dark:data-[state=inactive]:hover:bg-gray-700 py-4 text-base font-semibold transition-all"
+            >
+              <span className="flex items-center gap-2">
+                <Users className="h-6 w-6" />
+                <span>Estatísticas de Jogadores</span>
+              </span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="decks"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=inactive]:hover:bg-gray-200 dark:data-[state=inactive]:hover:bg-gray-700 py-4 text-base font-semibold transition-all"
+            >
+              <span className="flex items-center gap-2">
+                <PieChart className="h-6 w-6" />
+                <span>Estatísticas de Decks</span>
+              </span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="players" className="space-y-8">
+            <PlayerProfileChart 
+              data={bestPerformance.map(p => ({
+                name: p.name,
+                participations: p.participations,
+                tops: p.totalTops,
+                topPercentage: p.topPercentage,
+                firstPlace: p.firstPlace ?? 0,
+                secondPlace: p.secondPlace ?? 0,
+                thirdPlace: p.thirdPlace ?? 0,
+                fourthPlace: p.fourthPlace ?? 0,
+                points: p.points ?? 0,
+                currentStreak: p.currentStreak ?? 0,
+                bestStreak: p.bestStreak ?? 0
+              }))} 
+              colors={generateColors(bestPerformance.map(p => p.name))} 
+              isFiltered={isFiltered}
+              filteredCount={filteredTournaments}
+              totalCount={totalTournaments}
+            />
+            <StreaksChart 
+              tournaments={topsEvolutionData.tournaments}
+              results={topsEvolutionData.results}
+              topPlayers={topsEvolutionData.topPlayers}
+              colors={generateColors(topsEvolutionData.topPlayers)}
+              isFiltered={isFiltered}
+              filteredCount={filteredTournaments}
+              totalCount={totalTournaments}
+            />
+            <ImprovementChart 
+              tournaments={topsEvolutionData.tournaments}
+              results={topsEvolutionData.results}
+              topPlayers={topsEvolutionData.topPlayers}
+              colors={generateColors(topsEvolutionData.topPlayers)}
+              isFiltered={isFiltered}
+              filteredCount={filteredTournaments}
+              totalCount={totalTournaments}
+            />
+            <TopsEvolutionChart 
+              tournaments={topsEvolutionData.tournaments}
+              results={topsEvolutionData.results}
+              topPlayers={topsEvolutionData.topPlayers}
+              colors={generateColors(topsEvolutionData.topPlayers)}
+              isFiltered={isFiltered}
+              filteredCount={filteredTournaments}
+              totalCount={totalTournaments}
+            />
+            <PerformanceChart 
+              data={bestPerformance.map(p => ({
+                name: p.name,
+                topPercentage: p.topPercentage,
+                tops: p.totalTops,
+                participations: p.participations
+              }))} 
+              colors={generateColors(bestPerformance.map(p => p.name))} 
+              isFiltered={isFiltered}
+              filteredCount={filteredTournaments}
+              totalCount={totalTournaments}
+            />
+          </TabsContent>
+
+          <TabsContent value="decks" className="space-y-8">
+            {deckUsageData.length > 0 ? (
+              <>
+                <DeckUsageChart 
+                  data={deckUsageData.filter(d => d.primaryUses > 0).sort((a, b) => b.primaryUses - a.primaryUses)} 
+                  colors={deckColors}
+                  title="🎯 Decks Principais"
+                  isFiltered={isFiltered}
+                  filteredCount={filteredTournaments}
+                  totalCount={totalTournaments}
+                />
+                <DeckUsageChart 
+                  data={deckUsageData.filter(d => d.secondaryUses > 0).sort((a, b) => b.secondaryUses - a.secondaryUses)} 
+                  colors={deckColors}
+                  title="🔧 Decks de Suporte"
+                  isFiltered={isFiltered}
+                  filteredCount={filteredTournaments}
+                  totalCount={totalTournaments}
+                />
+              </>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-lg text-gray-600 dark:text-gray-400">
+                    Nenhum dado de deck encontrado para o período selecionado.
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+                    Os decks precisam ser cadastrados nos torneios para aparecerem nas estatísticas.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       )}
     </PageLayout>
   )

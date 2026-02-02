@@ -51,6 +51,29 @@ export interface PenaltyPlayerStats {
   penaltyRate: number
 }
 
+// Deck Types
+export interface Deck {
+  id: number
+  name: string
+  image_url: string | null
+  created_at?: string
+}
+
+export interface DeckWithStats extends Deck {
+  deckId: number
+  deckName: string
+  deckImageUrl: string | null
+  topFourCount: number
+  totalUses: number
+  wins: number
+  winRate: number
+  placements: { 1: number; 2: number; 3: number; 4: number }
+  primaryUses: number
+  secondaryUses: number
+  veteranUses: number
+  beginnerUses: number
+}
+
 // Tipos para tier system
 export interface TierSlots {
   S: number

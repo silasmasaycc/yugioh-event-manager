@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Trophy, LogOut, Plus, Edit, Trash2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Trophy, LogOut, Plus, Edit, Trash2, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth, useUserRole } from '@/lib/hooks/use-auth'
 import { toast } from 'sonner'
@@ -25,6 +26,12 @@ export default function AdminDashboard() {
   const [tournaments, setTournaments] = useState<any[]>([])
   const [penalties, setPenalties] = useState<any[]>([])
   const [decks, setDecks] = useState<any[]>([])
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  
+  // Filter states
+  const [playerFilter, setPlayerFilter] = useState('')
+  const [tournamentFilter, setTournamentFilter] = useState('')
+  const [deckFilter, setDeckFilter] = useState('')
   
   // Player form state
   const [showPlayerForm, setShowPlayerForm] = useState(false)
@@ -39,6 +46,20 @@ export default function AdminDashboard() {
   const [editingDeck, setEditingDeck] = useState<any>(null)
 
   const supabase = createClient()
+
+  useEffect(() => {
+    // Verificar se acabou de fazer login
+    const justLoggedIn = sessionStorage.getItem('justLoggedIn')
+    if (justLoggedIn) {
+      // Dar um tempo extra para os dados carregarem
+      setTimeout(() => {
+        sessionStorage.removeItem('justLoggedIn')
+        setIsInitialLoad(false)
+      }, 1500)
+    } else {
+      setIsInitialLoad(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -256,17 +277,35 @@ export default function AdminDashboard() {
     setEditingDeck(null)
   }
 
-  if (roleLoading || authLoading) {
+  // Filter functions
+  const filteredPlayers = players.filter(player => 
+    player.name.toLowerCase().includes(playerFilter.toLowerCase())
+  )
+
+  const filteredTournaments = tournaments.filter(tournament =>
+    tournament.name.toLowerCase().includes(tournamentFilter.toLowerCase())
+  )
+
+  const filteredDecks = decks.filter(deck =>
+    deck.name.toLowerCase().includes(deckFilter.toLowerCase())
+  )
+
+  // Mostrar loading se ainda está carregando OU se é o carregamento inicial após login
+  if (roleLoading || authLoading || isInitialLoad) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-xl">Carregando...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 to-white dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+          <p className="text-xl text-gray-700 dark:text-gray-300">Carregando...</p>
+        </div>
       </div>
     )
   }
 
-  if (!isAdmin && !role) {
+  // Se não está carregando e não tem role válido, mostrar acesso restrito
+  if (!role) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 to-white dark:from-gray-900 dark:to-gray-800">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
           <p className="mb-4">Você não tem permissão para acessar esta área.</p>
@@ -350,8 +389,19 @@ export default function AdminDashboard() {
               </Button>
             </div>
 
+            <div className="mb-4 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Buscar jogador por nome..."
+                value={playerFilter}
+                onChange={(e) => setPlayerFilter(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {players.map((player) => {
+              {filteredPlayers.map((player) => {
                 const playerPenalties = penalties.filter(p => p.player?.id === player.id)
                 
                 return (
@@ -382,8 +432,19 @@ export default function AdminDashboard() {
               </Button>
             </div>
 
+            <div className="mb-4 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Buscar torneio por nome..."
+                value={tournamentFilter}
+                onChange={(e) => setTournamentFilter(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {tournaments.map((tournament) => (
+              {filteredTournaments.map((tournament) => (
                 <TournamentCard
                   key={tournament.id}
                   tournament={tournament}
@@ -424,8 +485,19 @@ export default function AdminDashboard() {
               </Button>
             </div>
 
+            <div className="mb-4 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Buscar deck por nome..."
+                value={deckFilter}
+                onChange={(e) => setDeckFilter(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {decks.map((deck) => (
+              {filteredDecks.map((deck) => (
                 <AdminDeckCard
                   key={deck.id}
                   deck={deck}

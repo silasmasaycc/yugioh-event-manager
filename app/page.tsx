@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Trophy, Users, BarChart3, TrendingUp, Award } from 'lucide-react'
+import { Trophy, Users, BarChart3, TrendingUp, Award, Layers } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/header'
 import { filterAndProcessPlayers } from '@/lib/utils/process-players'
 import { calculateTiers } from '@/lib/utils/tier-calculator'
 import { PlayerAvatar } from '@/components/player/player-avatar'
 import { TournamentCard } from '@/components/tournaments/tournament-card'
+import { FeaturedDecks } from '@/components/home/featured-decks'
 
 export const revalidate = 3600 // 1 hora
 
@@ -22,12 +23,18 @@ export default async function HomePage() {
 
   const regularTournamentIds = regularTournaments?.map(t => t.id) || []
 
+  // Buscar todos os decks para referenciar pelo ID
+  const { data: allDecks } = await supabase
+    .from('decks')
+    .select('id, name, image_url')
+
   // Get latest stats and top players
   const [
     { count: totalPlayers },
     { count: totalTournaments },
     { data: latestTournaments },
-    { data: allPlayers }
+    { data: allPlayers },
+    { data: tournamentResults }
   ] = await Promise.all([
     supabase.from('players').select('*', { count: 'exact', head: true }),
     supabase.from('tournaments').select('*', { count: 'exact', head: true }).neq('tournament_type', 'beginner'),
@@ -37,7 +44,19 @@ export default async function HomePage() {
         *,
         tournament_results (
           placement,
+          deck_id,
+          deck_id_secondary,
           player:players (
+            id,
+            name,
+            image_url
+          ),
+          deck:decks!tournament_results_deck_id_fkey (
+            id,
+            name,
+            image_url
+          ),
+          deck_secondary:decks!tournament_results_deck_id_secondary_fkey (
             id,
             name,
             image_url
@@ -53,7 +72,18 @@ export default async function HomePage() {
         *,
         tournament_results(placement, tournament_id, tournaments(tournament_type)),
         penalties(player_id)
+      `),
+    supabase
+      .from('tournament_results')
+      .select(`
+        placement,
+        deck_id,
+        deck_id_secondary,
+        deck:decks!tournament_results_deck_id_fkey(id, name, image_url),
+        tournament:tournaments!inner(id, tournament_type)
       `)
+      .neq('tournament.tournament_type', 'beginner')
+      .in('placement', [1, 2, 3, 4])
   ])
 
   // Processar jogadores filtrando apenas torneios de veteranos
@@ -61,6 +91,109 @@ export default async function HomePage() {
 
   // Calcular tiers usando função utilitária
   const { tierSlots, avgPoints, tierGroups } = calculateTiers(playersWithStats)
+
+  // Processar estatísticas de decks
+  const deckStatsMap = new Map<number, {
+    deckId: number
+    deckName: string
+    deckImageUrl?: string
+    totalUses: number
+    placements: { 1: number; 2: number; 3: number; 4: number }
+    primaryUses: number
+    secondaryUses: number
+    veteranUses: number
+    beginnerUses: number
+  }>()
+
+  tournamentResults?.forEach((result: any) => {
+    // Processar deck principal
+    if (result.deck_id && result.deck) {
+      if (!deckStatsMap.has(result.deck_id)) {
+        deckStatsMap.set(result.deck_id, {
+          deckId: result.deck_id,
+          deckName: result.deck.name,
+          deckImageUrl: result.deck.image_url,
+          totalUses: 0,
+          placements: { 1: 0, 2: 0, 3: 0, 4: 0 },
+          primaryUses: 0,
+          secondaryUses: 0,
+          veteranUses: 0,
+          beginnerUses: 0
+        })
+      }
+      
+      const stats = deckStatsMap.get(result.deck_id)!
+      stats.totalUses++
+      stats.primaryUses++
+      if (result.placement >= 1 && result.placement <= 4) {
+        stats.placements[result.placement as 1 | 2 | 3 | 4]++
+      }
+      
+      // Incrementar contadores de tipo de torneio
+      const tournamentType = result.tournament?.tournament_type
+      if (tournamentType === 'beginner') {
+        stats.beginnerUses++
+      } else {
+        stats.veteranUses++
+      }
+    }
+
+    // Processar deck secundário
+    if (result.deck_id_secondary) {
+      if (!deckStatsMap.has(result.deck_id_secondary)) {
+        const secondaryDeck = allDecks?.find(d => d.id === result.deck_id_secondary)
+        
+        if (secondaryDeck) {
+          deckStatsMap.set(result.deck_id_secondary, {
+            deckId: result.deck_id_secondary,
+            deckName: secondaryDeck.name,
+            deckImageUrl: secondaryDeck.image_url,
+            totalUses: 0,
+            placements: { 1: 0, 2: 0, 3: 0, 4: 0 },
+            primaryUses: 0,
+            secondaryUses: 0,
+            veteranUses: 0,
+            beginnerUses: 0
+          })
+        }
+      }
+      
+      const stats = deckStatsMap.get(result.deck_id_secondary)
+      if (stats) {
+        stats.totalUses++
+        stats.secondaryUses++
+        if (result.placement >= 1 && result.placement <= 4) {
+          stats.placements[result.placement as 1 | 2 | 3 | 4]++
+        }
+        
+        // Incrementar contadores de tipo de torneio
+        const tournamentType = result.tournament?.tournament_type
+        if (tournamentType === 'beginner') {
+          stats.beginnerUses++
+        } else {
+          stats.veteranUses++
+        }
+      }
+    }
+  })
+
+  const topDecks = Array.from(deckStatsMap.values())
+    .map(deck => ({
+      ...deck,
+      topFourCount: deck.totalUses
+    }))
+    .sort((a, b) => {
+      // Separar por tipo: decks principais primeiro
+      const aIsPrimary = a.primaryUses > 0
+      const bIsPrimary = b.primaryUses > 0
+      
+      if (aIsPrimary && !bIsPrimary) return -1
+      if (!aIsPrimary && bIsPrimary) return 1
+      
+      // Dentro de cada categoria, ordenar por total de TOPs
+      return b.totalUses - a.totalUses
+    })
+    .slice(0, 4)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -99,10 +232,10 @@ export default async function HomePage() {
             <CardContent>
               <Link href="/stats">
                 <Button variant="link" className="p-0 h-auto text-green-700 dark:text-green-300 text-base font-semibold hover:text-green-600">
-                  Ver Estatísticas →
+                  Ver Gráficos →
                 </Button>
               </Link>
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">Gráficos e insights</p>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">Visualizações e insights</p>
             </CardContent>
           </Card>
         </div>
@@ -573,6 +706,25 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* Featured Decks */}
+      {topDecks.length > 0 && (
+        <section className="container mx-auto px-4 py-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-3xl font-bold mb-2">Decks em Destaque</h3>
+              <p className="text-gray-600 dark:text-gray-300">Os decks mais vitoriosos do momento</p>
+            </div>
+            <Link href="/decks">
+              <Button variant="outline" className="gap-2">
+                Ver Todos
+                <TrendingUp className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+          <FeaturedDecks decks={topDecks} />
+        </section>
+      )}
+
       {/* Latest Tournaments */}
       <section className="container mx-auto px-4 py-12">
         <div className="flex items-center justify-between mb-6">
@@ -619,7 +771,7 @@ export default async function HomePage() {
               </p>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <Link href="/players" className="block">
                 <Card className="hover:shadow-lg transition-all hover:scale-105 cursor-pointer h-full">
                   <CardContent className="p-6 text-center">
@@ -627,6 +779,18 @@ export default async function HomePage() {
                     <h4 className="font-bold mb-1">Jogadores</h4>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
                       Lista completa de participantes
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/decks" className="block">
+                <Card className="hover:shadow-lg transition-all hover:scale-105 cursor-pointer h-full">
+                  <CardContent className="p-6 text-center">
+                    <Layers className="h-10 w-10 mx-auto mb-3 text-purple-600 dark:text-purple-400" />
+                    <h4 className="font-bold mb-1">Decks</h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Estatísticas de decks
                     </p>
                   </CardContent>
                 </Card>
@@ -660,9 +824,9 @@ export default async function HomePage() {
                 <Card className="hover:shadow-lg transition-all hover:scale-105 cursor-pointer h-full">
                   <CardContent className="p-6 text-center">
                     <BarChart3 className="h-10 w-10 mx-auto mb-3 text-green-600 dark:text-green-400" />
-                    <h4 className="font-bold mb-1">Estatísticas</h4>
+                    <h4 className="font-bold mb-1">Gráficos</h4>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Análises e gráficos
+                      Visualizações e insights
                     </p>
                   </CardContent>
                 </Card>

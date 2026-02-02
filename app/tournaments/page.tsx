@@ -8,32 +8,41 @@ export const revalidate = 3600 // 1 hora
 export default async function TournamentsPage() {
   const supabase = await createClient()
 
-  const { data: tournaments, error } = await supabase
-    .from('tournaments')
-    .select(`
-      *,
-      tournament_results (
-        placement,
-        deck_id,
-        deck_id_secondary,
-        player:players (
-          id,
-          name,
-          image_url
-        ),
-        deck:decks!tournament_results_deck_id_fkey (
-          id,
-          name,
-          image_url
-        ),
-        deck_secondary:decks!tournament_results_deck_id_secondary_fkey (
-          id,
-          name,
-          image_url
+  const [
+    { data: tournaments, error },
+    { data: decks, error: decksError }
+  ] = await Promise.all([
+    supabase
+      .from('tournaments')
+      .select(`
+        *,
+        tournament_results (
+          placement,
+          deck_id,
+          deck_id_secondary,
+          player:players (
+            id,
+            name,
+            image_url
+          ),
+          deck:decks!tournament_results_deck_id_fkey (
+            id,
+            name,
+            image_url
+          ),
+          deck_secondary:decks!tournament_results_deck_id_secondary_fkey (
+            id,
+            name,
+            image_url
+          )
         )
-      )
-    `)
-    .order('date', { ascending: false })
+      `)
+      .order('date', { ascending: false }),
+    supabase
+      .from('decks')
+      .select('id, name, image_url')
+      .order('name', { ascending: true })
+  ])
 
   if (error) {
     logger.error(ERROR_MESSAGES.LOAD_TOURNAMENTS_ERROR, error)
@@ -44,5 +53,5 @@ export default async function TournamentsPage() {
     )
   }
 
-  return <TournamentsClient tournaments={tournaments || []} />
+  return <TournamentsClient tournaments={tournaments || []} decks={decks || []} />
 }

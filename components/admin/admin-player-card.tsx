@@ -87,54 +87,49 @@ export function AdminPlayerCard({
         </div>
 
         {/* Seção de Double Loss (separada por tipo) */}
-        {(playerPenalties.length > 0 || isAdmin) && (
-          <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
-            {/* Double Loss Veteranos */}
-            {(veteranPenalties.length > 0 || isAdmin) && (
-              <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🏆</span>
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Veteranos
-                    </span>
-                  </div>
-                  <div className="bg-red-100 dark:bg-red-900/30 px-3 py-1 rounded-full">
-                    <span className="text-sm font-bold text-red-700 dark:text-red-400">
-                      {veteranPenalties.length} DL
-                    </span>
-                  </div>
+        <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
+          {/* Double Loss Veteranos */}
+          <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🏆</span>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Veteranos
+                  </span>
                 </div>
-                {isAdmin && (
-                  <div className="flex gap-2">
-                    {veteranPenalties.length > 0 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-950/20 border-green-300 dark:border-green-800"
-                        onClick={() => onRemovePenalty(player.id, 'regular')}
-                      >
-                        <Minus className="h-4 w-4 text-green-600" />
-                        <span className="text-xs font-medium text-green-700 dark:text-green-400">Remover</span>
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={`${veteranPenalties.length > 0 ? 'flex-1' : 'w-full'} h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-300 dark:border-red-800`}
-                      onClick={() => onAddPenalty(player.id, 'regular')}
-                    >
-                      <Plus className="h-4 w-4 text-red-600" />
-                      <span className="text-xs font-medium text-red-700 dark:text-red-400">Adicionar</span>
-                    </Button>
-                  </div>
-                )}
+                <div className="bg-red-100 dark:bg-red-900/30 px-3 py-1 rounded-full">
+                  <span className="text-sm font-bold text-red-700 dark:text-red-400">
+                    {veteranPenalties.length} DL
+                  </span>
+                </div>
               </div>
-            )}
+              <div className="flex gap-2">
+                {isAdmin && veteranPenalties.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-950/20 border-green-300 dark:border-green-800"
+                    onClick={() => onRemovePenalty(player.id, 'regular')}
+                  >
+                    <Minus className="h-4 w-4 text-green-600" />
+                    <span className="text-xs font-medium text-green-700 dark:text-green-400">Remover</span>
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className={`${isAdmin && veteranPenalties.length > 0 ? 'flex-1' : 'w-full'} h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-300 dark:border-red-800`}
+                  onClick={() => onAddPenalty(player.id, 'regular')}
+                >
+                  <Plus className="h-4 w-4 text-red-600" />
+                  <span className="text-xs font-medium text-red-700 dark:text-red-400">Adicionar</span>
+                </Button>
+              </div>
+            </div>
+            
             
             {/* Double Loss Novatos */}
-            {(beginnerPenalties.length > 0 || isAdmin) && (
-              <div className="bg-orange-50 dark:bg-orange-950/20 rounded-lg p-3">
+            <div className="bg-orange-50 dark:bg-orange-950/20 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🆕</span>
@@ -148,34 +143,30 @@ export function AdminPlayerCard({
                     </span>
                   </div>
                 </div>
-                {isAdmin && (
-                  <div className="flex gap-2">
-                    {beginnerPenalties.length > 0 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-950/20 border-green-300 dark:border-green-800"
-                        onClick={() => onRemovePenalty(player.id, 'beginner')}
-                      >
-                        <Minus className="h-4 w-4 text-green-600" />
-                        <span className="text-xs font-medium text-green-700 dark:text-green-400">Remover</span>
-                      </Button>
-                    )}
+                <div className="flex gap-2">
+                  {isAdmin && beginnerPenalties.length > 0 && (
                     <Button
                       size="sm"
                       variant="outline"
-                      className={`${beginnerPenalties.length > 0 ? 'flex-1' : 'w-full'} h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-950/20 border-orange-300 dark:border-orange-800`}
-                      onClick={() => onAddPenalty(player.id, 'beginner')}
+                      className="flex-1 h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-950/20 border-green-300 dark:border-green-800"
+                      onClick={() => onRemovePenalty(player.id, 'beginner')}
                     >
-                      <Plus className="h-4 w-4 text-orange-600" />
-                      <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Adicionar</span>
+                      <Minus className="h-4 w-4 text-green-600" />
+                      <span className="text-xs font-medium text-green-700 dark:text-green-400">Remover</span>
                     </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={`${isAdmin && beginnerPenalties.length > 0 ? 'flex-1' : 'w-full'} h-9 gap-2 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-950/20 border-orange-300 dark:border-orange-800`}
+                    onClick={() => onAddPenalty(player.id, 'beginner')}
+                  >
+                    <Plus className="h-4 w-4 text-orange-600" />
+                    <span className="text-xs font-medium text-orange-700 dark:text-orange-400">Adicionar</span>
+                  </Button>
+                </div>
+            </div>
+        </div>
       </CardContent>
     </Card>
   )

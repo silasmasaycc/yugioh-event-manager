@@ -30,14 +30,18 @@ export default function LoginPage() {
 
       if (error) throw error
 
+      // Marcar que acabou de fazer login
+      sessionStorage.setItem('justLoggedIn', 'true')
+      
       toast.success('Login realizado com sucesso!')
+      // Manter loading true durante o redirecionamento
       router.push('/admin/dashboard')
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || 'Erro ao fazer login')
-    } finally {
       setLoading(false)
     }
+    // Não definir loading como false em caso de sucesso para manter o loading durante redirect
   }
 
   return (
@@ -88,9 +92,15 @@ export default function LoginPage() {
               </Button>
             </form>
 
+            {loading && (
+              <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+                <p>Carregando dados...</p>
+              </div>
+            )}
+
             <div className="mt-4 text-center">
               <Link href="/">
-                <Button variant="link">Voltar para Home</Button>
+                <Button variant="link" disabled={loading}>Voltar para Home</Button>
               </Link>
             </div>
           </CardContent>

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { createTournament, updateTournament } from '@/app/admin/actions'
 import { toast } from 'sonner'
 import { MEDAL_ICONS } from '@/lib/constants'
+import { Search } from 'lucide-react'
 
 interface Player {
   id: number
@@ -58,6 +59,14 @@ export function TournamentFormDialog({
   const [fourthDeckSecondary, setFourthDeckSecondary] = useState('none')
   const [otherParticipants, setOtherParticipants] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Filter states
+  const [playerSearchFirst, setPlayerSearchFirst] = useState('')
+  const [playerSearchSecond, setPlayerSearchSecond] = useState('')
+  const [playerSearchThird, setPlayerSearchThird] = useState('')
+  const [playerSearchFourth, setPlayerSearchFourth] = useState('')
+  const [deckSearch, setDeckSearch] = useState('')
+  const [participantSearch, setParticipantSearch] = useState('')
 
   // Update form values when editingTournament changes
   useEffect(() => {
@@ -120,6 +129,27 @@ export function TournamentFormDialog({
     setThirdDeckSecondary('none')
     setFourthDeckSecondary('none')
     setOtherParticipants([])
+    setPlayerSearchFirst('')
+    setPlayerSearchSecond('')
+    setPlayerSearchThird('')
+    setPlayerSearchFourth('')
+    setDeckSearch('')
+    setParticipantSearch('')
+  }
+
+  // Filter functions
+  const filterPlayersBySearch = (searchTerm: string) => {
+    if (!searchTerm) return players
+    return players.filter(player => 
+      player.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }
+
+  const filterDecksBySearch = (searchTerm: string) => {
+    if (!searchTerm) return decks
+    return decks.filter(deck => 
+      deck.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -295,7 +325,19 @@ export function TournamentFormDialog({
                     <SelectValue placeholder="Selecione o jogador" />
                   </SelectTrigger>
                   <SelectContent>
-                    {players.map((player) => (
+                    <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                        <Input
+                          placeholder="Buscar jogador..."
+                          value={playerSearchFirst}
+                          onChange={(e) => setPlayerSearchFirst(e.target.value)}
+                          className="h-8 pl-7 text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                    {filterPlayersBySearch(playerSearchFirst).map((player) => (
                       <SelectItem key={player.id} value={player.id.toString()}>
                         {player.name}
                       </SelectItem>
@@ -308,8 +350,20 @@ export function TournamentFormDialog({
                       <SelectValue placeholder="Deck 1 (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                          <Input
+                            placeholder="Buscar deck..."
+                            value={deckSearch}
+                            onChange={(e) => setDeckSearch(e.target.value)}
+                            className="h-8 pl-7 text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {decks.map((deck) => (
+                      {filterDecksBySearch(deckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -321,8 +375,20 @@ export function TournamentFormDialog({
                       <SelectValue placeholder="Deck 2 (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                          <Input
+                            placeholder="Buscar deck..."
+                            value={deckSearch}
+                            onChange={(e) => setDeckSearch(e.target.value)}
+                            className="h-8 pl-7 text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {decks.map((deck) => (
+                      {filterDecksBySearch(deckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -339,7 +405,19 @@ export function TournamentFormDialog({
                     <SelectValue placeholder="Selecione o jogador" />
                   </SelectTrigger>
                   <SelectContent>
-                    {players.map((player) => (
+                    <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                        <Input
+                          placeholder="Buscar jogador..."
+                          value={playerSearchSecond}
+                          onChange={(e) => setPlayerSearchSecond(e.target.value)}
+                          className="h-8 pl-7 text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                    {filterPlayersBySearch(playerSearchSecond).map((player) => (
                       <SelectItem key={player.id} value={player.id.toString()}>
                         {player.name}
                       </SelectItem>
@@ -352,8 +430,20 @@ export function TournamentFormDialog({
                       <SelectValue placeholder="Deck 1 (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                          <Input
+                            placeholder="Buscar deck..."
+                            value={deckSearch}
+                            onChange={(e) => setDeckSearch(e.target.value)}
+                            className="h-8 pl-7 text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {decks.map((deck) => (
+                      {filterDecksBySearch(deckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -365,8 +455,20 @@ export function TournamentFormDialog({
                       <SelectValue placeholder="Deck 2 (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                          <Input
+                            placeholder="Buscar deck..."
+                            value={deckSearch}
+                            onChange={(e) => setDeckSearch(e.target.value)}
+                            className="h-8 pl-7 text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {decks.map((deck) => (
+                      {filterDecksBySearch(deckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -383,7 +485,19 @@ export function TournamentFormDialog({
                     <SelectValue placeholder="Selecione o jogador" />
                   </SelectTrigger>
                   <SelectContent>
-                    {players.map((player) => (
+                    <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                        <Input
+                          placeholder="Buscar jogador..."
+                          value={playerSearchThird}
+                          onChange={(e) => setPlayerSearchThird(e.target.value)}
+                          className="h-8 pl-7 text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                    {filterPlayersBySearch(playerSearchThird).map((player) => (
                       <SelectItem key={player.id} value={player.id.toString()}>
                         {player.name}
                       </SelectItem>
@@ -396,8 +510,20 @@ export function TournamentFormDialog({
                       <SelectValue placeholder="Deck 1 (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                          <Input
+                            placeholder="Buscar deck..."
+                            value={deckSearch}
+                            onChange={(e) => setDeckSearch(e.target.value)}
+                            className="h-8 pl-7 text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {decks.map((deck) => (
+                      {filterDecksBySearch(deckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -409,8 +535,20 @@ export function TournamentFormDialog({
                       <SelectValue placeholder="Deck 2 (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                          <Input
+                            placeholder="Buscar deck..."
+                            value={deckSearch}
+                            onChange={(e) => setDeckSearch(e.target.value)}
+                            className="h-8 pl-7 text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {decks.map((deck) => (
+                      {filterDecksBySearch(deckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -427,7 +565,19 @@ export function TournamentFormDialog({
                     <SelectValue placeholder="Selecione o jogador" />
                   </SelectTrigger>
                   <SelectContent>
-                    {players.map((player) => (
+                    <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                        <Input
+                          placeholder="Buscar jogador..."
+                          value={playerSearchFourth}
+                          onChange={(e) => setPlayerSearchFourth(e.target.value)}
+                          className="h-8 pl-7 text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                    {filterPlayersBySearch(playerSearchFourth).map((player) => (
                       <SelectItem key={player.id} value={player.id.toString()}>
                         {player.name}
                       </SelectItem>
@@ -440,8 +590,20 @@ export function TournamentFormDialog({
                       <SelectValue placeholder="Deck 1 (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                          <Input
+                            placeholder="Buscar deck..."
+                            value={deckSearch}
+                            onChange={(e) => setDeckSearch(e.target.value)}
+                            className="h-8 pl-7 text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {decks.map((deck) => (
+                      {filterDecksBySearch(deckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -453,8 +615,20 @@ export function TournamentFormDialog({
                       <SelectValue placeholder="Deck 2 (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
+                          <Input
+                            placeholder="Buscar deck..."
+                            value={deckSearch}
+                            onChange={(e) => setDeckSearch(e.target.value)}
+                            className="h-8 pl-7 text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {decks.map((deck) => (
+                      {filterDecksBySearch(deckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -470,13 +644,24 @@ export function TournamentFormDialog({
             <h3 className="text-sm font-semibold mb-3">Outros Participantes (não ficaram no TOP 4)</h3>
             <div className="space-y-2">
               <Label>Selecione os demais jogadores que participaram</Label>
+              <div className="mb-2 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar participante..."
+                  value={participantSearch}
+                  onChange={(e) => setParticipantSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
               <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
                 {players
                   .filter(p => 
                     p.id.toString() !== firstPlace && 
                     p.id.toString() !== secondPlace && 
                     p.id.toString() !== thirdPlace && 
-                    p.id.toString() !== fourthPlace
+                    p.id.toString() !== fourthPlace &&
+                    p.name.toLowerCase().includes(participantSearch.toLowerCase())
                   )
                   .map((player) => (
                     <label key={player.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded">

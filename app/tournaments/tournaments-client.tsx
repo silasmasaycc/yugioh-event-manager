@@ -9,15 +9,18 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Search, X, Trophy, Users, Calendar } from 'lucide-react'
 import { LABELS } from '@/lib/constants/messages'
+import Image from 'next/image'
 
 interface TournamentsClientProps {
   tournaments: any[]
+  decks: any[]
 }
 
-export function TournamentsClient({ tournaments }: TournamentsClientProps) {
+export function TournamentsClient({ tournaments, decks }: TournamentsClientProps) {
   const [searchPlayer, setSearchPlayer] = useState('')
   const [selectedMonth, setSelectedMonth] = useState<string>('all')
   const [tournamentType, setTournamentType] = useState<string>('all')
+  const [selectedDeck, setSelectedDeck] = useState<string>('all')
 
   // Obter lista de meses únicos dos torneios
   const availableMonths = useMemo(() => {
@@ -56,6 +59,16 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
       )
     }
 
+    // Filtro por deck
+    if (selectedDeck !== 'all') {
+      const deckId = parseInt(selectedDeck)
+      filtered = filtered.filter(tournament => 
+        (tournament.tournament_results || []).some((result: any) => 
+          result.deck_id === deckId || result.deck_id_secondary === deckId
+        )
+      )
+    }
+
     // Filtro por mês
     if (selectedMonth !== 'all') {
       filtered = filtered.filter(tournament => {
@@ -67,7 +80,7 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
     }
 
     return filtered
-  }, [tournaments, searchPlayer, selectedMonth, tournamentType])
+  }, [tournaments, searchPlayer, selectedMonth, tournamentType, selectedDeck])
 
   // Estatísticas baseadas nos torneios filtrados
   const stats = useMemo(() => {
@@ -85,12 +98,13 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
     }
   }, [filteredTournaments])
 
-  const hasActiveFilters = searchPlayer || selectedMonth !== 'all' || tournamentType !== 'all'
+  const hasActiveFilters = searchPlayer || selectedMonth !== 'all' || tournamentType !== 'all' || selectedDeck !== 'all'
 
   const clearFilters = () => {
     setSearchPlayer('')
     setSelectedMonth('all')
     setTournamentType('all')
+    setSelectedDeck('all')
   }
 
   // Função para formatar o nome do mês
@@ -155,7 +169,7 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Buscar por jogador */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -166,6 +180,43 @@ export function TournamentsClient({ tournaments }: TournamentsClientProps) {
                 onChange={(e) => setSearchPlayer(e.target.value)}
                 className="pl-10"
               />
+            </div>
+
+            {/* Filtrar por deck */}
+            <div className="relative">
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 z-10 pointer-events-none">
+                🃏
+              </div>
+              <Select value={selectedDeck} onValueChange={setSelectedDeck}>
+                <SelectTrigger className="pl-10">
+                  <SelectValue placeholder="Todos os decks" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os decks</SelectItem>
+                  {decks.map(deck => (
+                    <SelectItem key={deck.id} value={deck.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        {deck.image_url ? (
+                          <div className="relative w-4 h-4 rounded overflow-hidden">
+                            <Image
+                              src={deck.image_url}
+                              alt={deck.name}
+                              width={16}
+                              height={16}
+                              className="object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <span className="w-4 h-4 flex items-center justify-center bg-gradient-to-br from-purple-400 to-pink-500 rounded text-xs text-white font-bold">
+                            {deck.name[0]?.toUpperCase()}
+                          </span>
+                        )}
+                        <span>{deck.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Filtrar por tipo */}

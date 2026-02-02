@@ -22,8 +22,9 @@ export function Header({ activeRoute }: HeaderProps) {
 
   const navItems = [
     { href: '/ranking', label: 'Ranking' },
-    { href: '/stats', label: 'Estatísticas' },
+    { href: '/stats', label: 'Gráficos' },
     { href: '/tournaments', label: 'Torneios' },
+    { href: '/decks', label: 'Decks' },
     { href: '/players', label: 'Jogadores' },
     { href: '/login', label: 'Login Admin', variant: 'outline' as const },
   ]
