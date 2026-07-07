@@ -20,7 +20,7 @@ import { deletePlayer, deleteTournament, addPenalty, deletePenalty, deleteDeck }
 export default function AdminDashboard() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const { role, isAdmin, loading: roleLoading } = useUserRole()
+  const { role, isAdmin, loading: roleLoading } = useUserRole(user)
   const [activeTab, setActiveTab] = useState<'players' | 'tournaments' | 'decks'>('tournaments')
   const [players, setPlayers] = useState<any[]>([])
   const [tournaments, setTournaments] = useState<any[]>([])

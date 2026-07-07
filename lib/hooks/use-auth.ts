@@ -31,10 +31,9 @@ export function useAuth() {
   return { user, loading, supabase }
 }
 
-export function useUserRole() {
+export function useUserRole(user: User | null) {
   const [role, setRole] = useState<'admin' | 'subadmin' | null>(null)
   const [loading, setLoading] = useState(true)
-  const { user } = useAuth()
   const supabase = createClient()
 
   useEffect(() => {

@@ -65,7 +65,14 @@ export function TournamentFormDialog({
   const [playerSearchSecond, setPlayerSearchSecond] = useState('')
   const [playerSearchThird, setPlayerSearchThird] = useState('')
   const [playerSearchFourth, setPlayerSearchFourth] = useState('')
-  const [deckSearch, setDeckSearch] = useState('')
+  const [firstDeckSearch, setFirstDeckSearch] = useState('')
+  const [firstDeckSecondarySearch, setFirstDeckSecondarySearch] = useState('')
+  const [secondDeckSearch, setSecondDeckSearch] = useState('')
+  const [secondDeckSecondarySearch, setSecondDeckSecondarySearch] = useState('')
+  const [thirdDeckSearch, setThirdDeckSearch] = useState('')
+  const [thirdDeckSecondarySearch, setThirdDeckSecondarySearch] = useState('')
+  const [fourthDeckSearch, setFourthDeckSearch] = useState('')
+  const [fourthDeckSecondarySearch, setFourthDeckSecondarySearch] = useState('')
   const [participantSearch, setParticipantSearch] = useState('')
 
   // Update form values when editingTournament changes
@@ -133,7 +140,14 @@ export function TournamentFormDialog({
     setPlayerSearchSecond('')
     setPlayerSearchThird('')
     setPlayerSearchFourth('')
-    setDeckSearch('')
+    setFirstDeckSearch('')
+    setFirstDeckSecondarySearch('')
+    setSecondDeckSearch('')
+    setSecondDeckSecondarySearch('')
+    setThirdDeckSearch('')
+    setThirdDeckSecondarySearch('')
+    setFourthDeckSearch('')
+    setFourthDeckSecondarySearch('')
     setParticipantSearch('')
   }
 
@@ -355,15 +369,15 @@ export function TournamentFormDialog({
                           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
                           <Input
                             placeholder="Buscar deck..."
-                            value={deckSearch}
-                            onChange={(e) => setDeckSearch(e.target.value)}
+                            value={firstDeckSearch}
+                            onChange={(e) => setFirstDeckSearch(e.target.value)}
                             className="h-8 pl-7 text-sm"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {filterDecksBySearch(deckSearch).map((deck) => (
+                      {filterDecksBySearch(firstDeckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -380,15 +394,15 @@ export function TournamentFormDialog({
                           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
                           <Input
                             placeholder="Buscar deck..."
-                            value={deckSearch}
-                            onChange={(e) => setDeckSearch(e.target.value)}
+                            value={firstDeckSecondarySearch}
+                            onChange={(e) => setFirstDeckSecondarySearch(e.target.value)}
                             className="h-8 pl-7 text-sm"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {filterDecksBySearch(deckSearch).map((deck) => (
+                      {filterDecksBySearch(firstDeckSecondarySearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -435,15 +449,15 @@ export function TournamentFormDialog({
                           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
                           <Input
                             placeholder="Buscar deck..."
-                            value={deckSearch}
-                            onChange={(e) => setDeckSearch(e.target.value)}
+                            value={secondDeckSearch}
+                            onChange={(e) => setSecondDeckSearch(e.target.value)}
                             className="h-8 pl-7 text-sm"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {filterDecksBySearch(deckSearch).map((deck) => (
+                      {filterDecksBySearch(secondDeckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -460,15 +474,15 @@ export function TournamentFormDialog({
                           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
                           <Input
                             placeholder="Buscar deck..."
-                            value={deckSearch}
-                            onChange={(e) => setDeckSearch(e.target.value)}
+                            value={secondDeckSecondarySearch}
+                            onChange={(e) => setSecondDeckSecondarySearch(e.target.value)}
                             className="h-8 pl-7 text-sm"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {filterDecksBySearch(deckSearch).map((deck) => (
+                      {filterDecksBySearch(secondDeckSecondarySearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -515,15 +529,15 @@ export function TournamentFormDialog({
                           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
                           <Input
                             placeholder="Buscar deck..."
-                            value={deckSearch}
-                            onChange={(e) => setDeckSearch(e.target.value)}
+                            value={thirdDeckSearch}
+                            onChange={(e) => setThirdDeckSearch(e.target.value)}
                             className="h-8 pl-7 text-sm"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {filterDecksBySearch(deckSearch).map((deck) => (
+                      {filterDecksBySearch(thirdDeckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -540,15 +554,15 @@ export function TournamentFormDialog({
                           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
                           <Input
                             placeholder="Buscar deck..."
-                            value={deckSearch}
-                            onChange={(e) => setDeckSearch(e.target.value)}
+                            value={thirdDeckSecondarySearch}
+                            onChange={(e) => setThirdDeckSecondarySearch(e.target.value)}
                             className="h-8 pl-7 text-sm"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {filterDecksBySearch(deckSearch).map((deck) => (
+                      {filterDecksBySearch(thirdDeckSecondarySearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -595,15 +609,15 @@ export function TournamentFormDialog({
                           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
                           <Input
                             placeholder="Buscar deck..."
-                            value={deckSearch}
-                            onChange={(e) => setDeckSearch(e.target.value)}
+                            value={fourthDeckSearch}
+                            onChange={(e) => setFourthDeckSearch(e.target.value)}
                             className="h-8 pl-7 text-sm"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {filterDecksBySearch(deckSearch).map((deck) => (
+                      {filterDecksBySearch(fourthDeckSearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
@@ -620,15 +634,15 @@ export function TournamentFormDialog({
                           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 z-10" />
                           <Input
                             placeholder="Buscar deck..."
-                            value={deckSearch}
-                            onChange={(e) => setDeckSearch(e.target.value)}
+                            value={fourthDeckSecondarySearch}
+                            onChange={(e) => setFourthDeckSecondarySearch(e.target.value)}
                             className="h-8 pl-7 text-sm"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {filterDecksBySearch(deckSearch).map((deck) => (
+                      {filterDecksBySearch(fourthDeckSecondarySearch).map((deck) => (
                         <SelectItem key={deck.id} value={deck.id.toString()}>
                           {deck.name}
                         </SelectItem>
