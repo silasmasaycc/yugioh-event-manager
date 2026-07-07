@@ -103,6 +103,8 @@ describe('Tournaments Page', () => {
       cy.wait(500)
     })
 
+  })
+
   //   it('deve filtrar torneios por mês', () => {
   //     // Clica no select de mês
   //     cy.contains('Mês').parent().find('button').click()
